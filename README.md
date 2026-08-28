@@ -13,14 +13,14 @@ todo-project/
 ├── docs/              # 문서 (본 저장소, main 단일 브랜치)
 ├── CLAUDE.md          # 프로젝트 지침
 ├── todo-backend/      # 백엔드 (독립 저장소, main + develop)
-└── todo-frontend/     # 프론트엔드 (독립 저장소, main + develop)
+└── todo_frontend/     # 프론트엔드 (독립 저장소, main + develop)
 ```
 
 | 디렉토리 | 담당 | 브랜치 |
 |---|---|---|
 | 루트 (`docs/`, `CLAUDE.md`) | 문서 | `main` |
 | `todo-backend/` | 백엔드 코드 | `main` + `develop` |
-| `todo-frontend/` | 프론트엔드 코드 | `main` + `develop` |
+| `todo_frontend/` | 프론트엔드 코드 | `main` + `develop` |
 
 변경한 파일이 속한 저장소에서 커밋한다. 자세한 내용은 [CLAUDE.md 3장](./CLAUDE.md#3-반드시-지킬-핵심-규칙-non-negotiable)을 참고한다.
 
@@ -46,7 +46,7 @@ todo-project/
 ./mvnw test                                               # 테스트 (todolistdb_test 스키마 사용)
 ```
 
-### Frontend (`todo-frontend/`)
+### Frontend (`todo_frontend/`)
 
 ```bash
 npm run dev            # 개발 서버
@@ -64,7 +64,7 @@ cd todo-backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 # 2. 프론트 저장소에서 E2E 실행 (webServer가 next dev를 자동 기동)
-cd todo-frontend
+cd todo_frontend
 npx playwright test
 ```
 
@@ -83,7 +83,7 @@ npx playwright test
 | `APP_FRONTEND_URL` | OAuth2 로그인 성공 후 리다이렉트할 프론트엔드 주소 |
 | `OAUTH_GOOGLE_CLIENT_ID` / `OAUTH_GOOGLE_CLIENT_SECRET` | Google OAuth2 클라이언트 정보 |
 | `OAUTH_KAKAO_CLIENT_ID` / `OAUTH_KAKAO_CLIENT_SECRET` | Kakao OAuth2 클라이언트 정보 |
-| `NEXT_PUBLIC_API_BASE_URL` | 프론트엔드에서 사용할 백엔드 API 주소 (`todo-frontend/.env.local`) |
+| `NEXT_PUBLIC_API_BASE_URL` | 프론트엔드에서 사용할 백엔드 API 주소 (`todo_frontend/.env.local`) |
 
 값 목록·상세 설명은 [docs/PRD.md 12장](./docs/PRD.md)을 참고한다.
 
