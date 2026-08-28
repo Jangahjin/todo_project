@@ -1,0 +1,72 @@
+# =====================================================================
+# 루트 저장소 .gitignore  (문서 전용 저장소)
+#
+# 이 프로젝트는 세 개의 독립 GitHub 저장소로 관리한다.
+#   루트          : 문서(docs/) + 프로젝트 지침(CLAUDE.md)
+#   todo-backend  : 백엔드 코드  (자체 .git / 자체 .gitignore)
+#   todo-frontend : 프론트 코드  (자체 .git / 자체 .gitignore)
+#
+# 따라서 이 파일은 루트 저장소에만 적용된다. 하위 두 폴더의 무시 규칙은
+# 각 폴더의 .gitignore가 담당한다.
+# =====================================================================
+
+# --- 민감정보 (CLAUDE.md 불변 규칙 9) ---
+# 실제 시크릿은 시스템 환경변수로 주입한다. 아래 파일들은 절대 커밋하지 않는다.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+
+# 로컬 전용 설정 오버라이드 (실수로 시크릿을 적어도 커밋되지 않도록)
+**/application-local.properties
+**/application-*.local.properties
+
+# --- 독립 저장소 (각자 별도 GitHub 저장소로 관리) ---
+# 이 두 폴더는 자체 .git 을 가진 독립 저장소다. 여기서 제외하지 않으면
+# git이 embedded repository 로 인식해 내용 대신 커밋 해시만 기록한다.
+#   todo-backend  -> github.com/kdongjin/todo-backend
+#   todo-frontend -> github.com/kdongjin/todo-frontend
+todo-backend/
+todo-frontend/
+
+# --- IDE 워크스페이스 메타데이터 ---
+.metadata/
+
+# --- 빌드 산출물 ---
+target/
+build/
+out/
+dist/
+.next/
+node_modules/
+
+# --- IDE / 에디터 ---
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- 로그 ---
+*.log
+logs/
+npm-debug.log*
+yarn-error.log*
+
+# --- 도구 캐시 ---
+.claude/settings.local.json
+.claude/plans/
+shrimp_data/
+.playwright-mcp/
+
+# --- 임시 디버깅 스크린샷 등 ---
+*.png
