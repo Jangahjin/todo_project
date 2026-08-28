@@ -262,21 +262,23 @@ M1 이후 모든 DoD가 "테스트로 확인"을 요구하는데, **테스트 DB
 - [x] 기존 `TodoBackendApplicationTests.contextLoads()`가 새 전략에서 통과 — 실측(2026-08-28) `Tests run: 3, Failures: 0, Errors: 0`
 - [x] 테스트 두 개를 연속 실행해도 데이터가 서로 오염되지 않음 — `com.example.support.TestIsolationVerificationTest`(`@TestMethodOrder`로 순서 고정)로 scratch 테이블 insert/count 검증(`@Transactional` 롤백으로 두 번째 테스트가 첫 번째 테스트의 행을 보지 못함, 테이블 자체도 DDL 롤백으로 남지 않음을 `information_schema.tables` 조회로 확인)
 
-### Task 008: BaseEntity·JPA Auditing 및 Soft Delete 기반 구축
+### Task 008: BaseEntity·JPA Auditing 및 Soft Delete 기반 구축 ✅ 완료
 
 **영역**: BE | **선행**: Task 007
 
-- [ ] `common/entity/BaseEntity.java` — `createdAt`, `updatedAt`, `deletedAt` (PRD 8.2 공통 컬럼)
-- [ ] **`config/JpaAuditingConfig.java` — `@EnableJpaAuditing`** (PRD 2.1)
-  - ⚠️ 이 설정이 없으면 `@CreatedDate`/`@LastModifiedDate`가 **조용히 동작하지 않아** `created_at`/`updated_at`이 `null`로 저장되고, `NOT NULL` 제약에서 터진다
-  - `@EntityListeners(AuditingEntityListener.class)`를 `BaseEntity`에 부착
-- [ ] Soft Delete: `@SQLDelete(sql = "UPDATE ... SET deleted_at = now() WHERE id = ?")` + `@SQLRestriction("deleted_at IS NULL")`
-  - ⚠️ `@SQLDelete`의 UPDATE 문은 **네이티브 SQL**이라 `default_schema`가 자동 적용되지 않을 수 있다. 실행 SQL 로그로 스키마 접두사를 확인한다 (PRD 8.3)
+> ⚠️ 착수 직전 발견: 실제 베이스 패키지가 PRD 2.1이 명시한 `com.example`이 아니라 Spring Initializr 기본값인 `com.example.demo`였다. `com.example.support`가 `@SpringBootApplication`의 하위 패키지가 아니게 되어 Task 007에서 겪은 자동 탐색 실패의 원인이었고, 이 상태로 `domain/*`을 만들면 같은 문제가 반복될 것이었다. Task 008 착수 전에 `TodoBackendApplication`·`TodoBackendApplicationTests`를 `com.example`로 이동해 PRD와 일치시켰다(별도 커밋 `184873e`).
 
-**테스트 체크리스트 (JUnit 5)**
-- [ ] 엔티티 저장 시 `createdAt`/`updatedAt`이 **자동으로 채워진다** (Auditing 동작 확인)
-- [ ] 수정 시 `updatedAt`만 갱신된다
-- [ ] `delete()` 호출 후 물리 행이 남아 있고 `deleted_at`이 채워진다
+- [x] `common/entity/BaseEntity.java` — `createdAt`, `updatedAt`, `deletedAt` (PRD 8.2 공통 컬럼). `@MappedSuperclass` + `@EntityListeners(AuditingEntityListener.class)`
+- [x] **`config/JpaAuditingConfig.java` — `@EnableJpaAuditing`** (PRD 2.1)
+- [x] Soft Delete: `@SQLDelete(sql = "UPDATE ... SET deleted_at = now() WHERE id = ?")` + `@SQLRestriction("deleted_at IS NULL")`
+  - 실측(2026-08-28): **스키마를 명시하지 않아도 정상 동작한다.** JDBC URL의 `currentSchema`가 커넥션의 `search_path`를 이미 설정해두므로(dev=`todolistdb`, test=`todolistdb_test`), 비한정 테이블명이 환경마다 올바른 스키마로 자동 resolve됨을 실행 SQL 로그로 확인했다(`UPDATE soft_delete_sample SET deleted_at = now() WHERE id = ?` — 스키마 접두사 없이 성공). PRD 8.3의 우려(default_schema 미적용 가능성)는 기우였다
+  - 도메인 엔티티가 아직 없어(Task 009 예정) `com.example.support.entity.SoftDeleteSampleEntity`(테스트 전용)로 패턴을 먼저 검증했다. 실제 `User`/`Todo`는 Task 009에서 이 패턴을 그대로 적용한다
+
+**테스트 체크리스트 (JUnit 5)** — `SoftDeleteSampleEntityTest`, 실측(2026-08-28) `Tests run: 6, Failures: 0`
+- [x] 엔티티 저장 시 `createdAt`/`updatedAt`이 **자동으로 채워진다** (Auditing 동작 확인)
+- [x] 수정 시 `updatedAt`만 갱신된다 (`createdAt`은 불변)
+- [x] `delete()` 호출 후 물리 행이 남아 있고 `deleted_at`이 채워진다 — `JdbcTemplate` 네이티브 쿼리로 직접 확인
+- [x] **부가 발견 — PRD_VALIDATION의 미확정 가정 해소**: `@SQLRestriction`이 `EntityManager.find()`(ID 직접 로드)에도 적용됨을 확인했다. 삭제 후 `find()`가 `null`을 반환했고, SELECT 로그에 `deleted_at IS NULL` 조건이 자동으로 붙는 것을 확인했다. 다만 PRD 8.3 권고대로 실제 도메인 엔티티는 소유권 검증까지 겸하는 `findByIdAndUser_IdAndDeletedAtIsNull(...)` 파생 쿼리를 계속 사용한다
 
 ### Task 009: User·Todo 엔티티 및 Repository 구현
 
