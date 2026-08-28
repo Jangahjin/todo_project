@@ -113,7 +113,7 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 | `./mvnw clean test` 통과 (JDK 21) | ✅ 실측(2026-08-28) 확인 — `BUILD SUCCESS`, `Tests run: 1, Failures: 0` |
 | **Git 저장소 구성** | ✅ **3-저장소 구성 완료** — 루트(문서, `main`) · `todo-backend`(`main`+`develop`, 커밋 3) · `todo-frontend`(`main`+`develop`, 커밋 3) |
 | 루트용 GitHub 저장소 | ❌ **미생성** — `gh` CLI 없어 웹에서 직접 생성 필요 |
-| 세 저장소 push | ❌ 미실행 |
+| 세 저장소 push | ⚠️ `todo-backend`·`todo_frontend`는 완료(2026-08-28), 루트는 원격 미생성으로 보류 |
 | **`JAVA_HOME`** | ✅ 실측(2026-08-28) `C:\SpringBootProject\zulu21`로 확인, 새 셸 `java -version`/`./mvnw -v` 모두 21 보고 |
 | 루트 `README.md` | ❌ 없음 |
 | PostgreSQL `TodoListDB` 스키마 물리명 확인 | ✅ 실측(2026-08-28) `\dn`으로 `todolistdb`(소문자) 확인 |
@@ -192,8 +192,8 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 - [x] **커밋 전 시크릿 스캔** — 세 저장소 모두 평문 시크릿 0건 확인 (불변 규칙 9). 단, `todo-backend`의 `application.properties`는 `.gitignore` 처리돼 있어 커밋 대상 자체가 아니었을 뿐, 파일 안에는 한때 평문 `DB_PASSWORD`가 있었다(2026-08-28에 `${DB_PASSWORD}`로 수정, 커밋되지 않는 파일이라 히스토리에는 안 남음)
 - [x] embedded repository 경고 없음 확인 — 실측: 루트 `git ls-files`에 `todo-backend`/`todo_frontend` gitlink 없음
 - [ ] **루트용 GitHub 저장소 생성 및 push** (사용자 작업 — `gh` CLI 미설치, `git remote -v` 결과 원격 없음)
-- [x] `todo-backend`·`todo_frontend`는 원격(`origin`) 설정은 돼 있으나(`Jangahjin/todo-backend`, `Jangahjin/todo-frontend`) — 실측: `git ls-remote --heads origin` 결과 브랜치가 하나도 없어 **아직 push된 적이 없다**
-- [ ] 세 저장소 push — 코드 저장소는 `main`·`develop` 둘 다, 루트는 원격 생성 후
+- [x] `todo-backend`·`todo_frontend`(`Jangahjin/todo-backend`, `Jangahjin/todo-frontend`)에 `main`·`develop` 브랜치를 push 완료(2026-08-28) — push 전에는 `git ls-remote --heads origin` 결과 브랜치가 하나도 없어 미push 상태였음을 실측 확인함
+- [ ] 루트 저장소 push — 원격 자체가 아직 없어 위 항목("루트용 GitHub 저장소 생성")이 선행돼야 한다
 
 ### Task 005: PostgreSQL `TodoListDB` 스키마 준비 및 연결 검증 ✅ 완료
 
