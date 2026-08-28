@@ -4,27 +4,34 @@
 
 ## 1. 저장소 구조 — 커밋 위치 결정
 
-- 이 워크스페이스는 **3개의 독립 Git 저장소**다: 루트 `todo-project/`, `todo-backend/`, `todo-frontend/`.
+- 이 워크스페이스는 **3개의 독립 Git 저장소**다: 루트 `todo-project/`, `todo-backend/`, `todo_frontend/`(폴더명은 언더스코어).
 - 파일 경로로 커밋 위치를 판단한다:
-  - `docs/**`, `CLAUDE.md`, `.claude/**`, `shrimp-rules.md` → 루트 저장소, `main` 브랜치.
-  - `todo-backend/**` → `todo-backend` 저장소, `main`+`develop` 브랜치 정책.
-  - `todo-frontend/**` → `todo-frontend` 저장소, `main`+`develop` 브랜치 정책.
+  - `docs/**`, `CLAUDE.md`, `.claude/**`, `shrimp-rules.md` → 루트 저장소.
+  - `todo-backend/**` → `todo-backend` 저장소.
+  - `todo_frontend/**` → `todo_frontend` 저장소.
 - 한 작업에서 두 종류 이상의 경로를 수정했다면 **각 저장소에서 별도 커밋**을 생성한다. 하나의 커밋으로 묶지 않는다.
-- **금지**: 루트 `.gitignore`에서 `todo-backend/`·`todo-frontend/` 제외 규칙을 삭제하는 것. 삭제 시 두 폴더가 embedded repository로 기록되어 clone 시 빈 디렉토리가 된다.
+- **금지**: 루트 `.gitignore`에서 `todo-backend/`·`todo_frontend/` 제외 규칙을 삭제하는 것. 삭제 시 두 폴더가 embedded repository로 기록되어 clone 시 빈 디렉토리가 된다.
+- **현재 실제 브랜치 상태**(추측 금지, 커밋 전 `git branch`로 재확인할 것): 루트 저장소는 아직 `master`이고 `main`/`develop`이 생성되어 있지 않다. `todo-backend`·`todo_frontend`는 이미 `main`만 존재한다(`develop`은 아직 없음). CLAUDE.md의 `main`←`develop`←`feature/*` 브랜치 정책은 **목표 구조**이며, 없는 브랜치를 있다고 가정하고 PR 대상 브랜치를 지정하지 않는다.
 
 ## 2. 참조해야 할 문서 (우선순위)
 
 - 요구사항 상세는 `docs/PRD.md`, API 계약은 `docs/API_SPEC.md`, 작업 순서는 `docs/ROADMAP.md`를 확인한 뒤 구현한다.
 - `docs/guides/`와 `docs/PRD.md`가 충돌하면 **`docs/PRD.md` 1.3(기술 스택)을 사실로 삼는다.**
 - 새 기능을 추가하기 전, 해당 기능이 이미 명시적으로 설치/도입된 마일스톤인지 `docs/PRD.md` 1.3 설치 상태 표와 `docs/ROADMAP.md`에서 먼저 확인한다.
+- 주제별로 다음 가이드를 우선 참고한다(`docs/guides/`): 라우팅/디렉토리 구조 → `project-structure.md`, 폼 구현 → `forms-react-hook-form.md`, 컴포넌트 작성 패턴 → `component-patterns.md`, Tailwind/디자인 토큰 → `styling-guide.md`, Next.js 16 자체 변경사항 → `nextjs-16.md`.
 
 ## 3. 미설치 라이브러리 — 임의 import 금지
 
 - 다음 라이브러리는 **아직 설치되지 않았다**: React Query, Framer Motion, Tiptap, React Hook Form, Zod.
-- 이들을 `import`하는 코드를 작성하기 전, `todo-frontend/package.json`의 `dependencies`/`devDependencies`에 실제로 존재하는지 먼저 확인한다.
+- 이들을 `import`하는 코드를 작성하기 전, `todo_frontend/package.json`의 `dependencies`/`devDependencies`에 실제로 존재하는지 먼저 확인한다.
 - 없는데 필요하다면 `npm install`로 설치를 먼저 수행하고, 설치 시점이 현재 마일스톤에 해당하는지 `docs/PRD.md` 1.3을 재확인한다.
 
 ## 4. Backend 구현 규칙
+
+### 4.0 현재 구현 상태 (스캐폴드 단계)
+- `todo-backend/src/main/java/com/example/demo/`에는 `TodoBackendApplication.java`(부트스트랩)와 테스트 1개만 존재한다. 엔티티·컨트롤러·서비스·시큐리티 설정 등 도메인 코드가 전혀 없다.
+- 새 도메인 클래스는 `com.example.demo` 패키지를 기준으로 하위 패키지(`domain`, `controller`, `service`, `repository`, `dto`, `config` 등)를 만들어 배치한다. `pom.xml`의 `groupId`(`com.example`)와 달리 실제 코드 패키지는 `com.example.demo`이므로, 새 파일 생성 시 기존 `TodoBackendApplication.java`의 패키지 선언을 그대로 따른다(임의로 `com.example`로 변경하지 않는다).
+- `todo-backend/src/main/resources/application.properties`의 DB 접속 정보(스키마명·비밀번호)는 CLAUDE.md 불변 규칙 9·10과 다른 로컬 전용 값으로 **의도적으로 설정**되어 있다. 이 파일의 DB 접속값을 "규칙 위반"으로 판단해 임의로 수정하지 않는다. 새 코드에서 실제 스키마명이 필요하면 CLAUDE.md의 공식 값이 아니라 이 파일에 실제로 적힌 값을 그대로 사용한다.
 
 ### 4.1 레이어 및 파일 배치
 - Controller → Service → Repository 순서를 지킨다. Controller에 비즈니스 로직을 작성하지 않는다.
@@ -54,6 +61,11 @@
 - 실행 전 JDK 21이 활성 상태인지 확인한다(`java -version`이 17을 보고하면 빌드가 실패한다).
 
 ## 5. Frontend 구현 규칙
+
+### 5.0 현재 구현 상태 (스캐폴드 단계)
+- `todo_frontend/app/`에는 기본 `layout.tsx`·`page.tsx`·`globals.css`만 있다. `components/ui/`에는 shadcn `button.tsx` 하나만 설치되어 있고, `lib/`에는 `utils.ts`(`cn()`)만 있다. 라우트 그룹, 인증 페이지, Todo 관련 화면은 아직 하나도 없다.
+- `todo_frontend/CLAUDE.md`는 `todo_frontend/AGENTS.md`를 그대로 참조한다. `next dev` 실행 시 `AGENTS.md`가 자동 재생성되므로 내용을 직접 수정하지 않는다.
+- `AGENTS.md` 지시에 따라, Next.js 16 API(라우팅·캐싱·설정 등)를 사용하기 전에 **`todo_frontend/node_modules/next/dist/docs/`의 해당 문서를 먼저 확인**한다(루트가 아닌 `todo_frontend` 기준 경로). 이 로컬 문서는 `context7` MCP 조회보다 우선한다 — 설치된 실제 버전(16.3.3)에 대응하기 때문이다.
 
 ### 5.1 컴포넌트 및 상태
 - `"use client"`는 클라이언트 상호작용이 실제로 필요한 컴포넌트에만 선언한다. 서버/클라이언트 경계를 불필요하게 넓히지 않는다.
