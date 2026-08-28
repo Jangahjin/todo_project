@@ -116,13 +116,13 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 | 세 저장소 push | ❌ 미실행 |
 | **`JAVA_HOME`** | ✅ 실측(2026-08-28) `C:\SpringBootProject\zulu21`로 확인, 새 셸 `java -version`/`./mvnw -v` 모두 21 보고 |
 | 루트 `README.md` | ❌ 없음 |
-| PostgreSQL `TodoListDB` 스키마 물리명 확인 | ⚠️ 미확인 (`\dn` 실측 필요) |
+| PostgreSQL `TodoListDB` 스키마 물리명 확인 | ✅ 실측(2026-08-28) `\dn`으로 `todolistdb`(소문자) 확인 |
 | 백엔드 도메인 코드 | ❌ 없음 (`TodoBackendApplication`, `TodoBackendApplicationTests`만 존재) |
 | 프론트 라이브러리 (React Query·Framer Motion·RHF·Zod·Tiptap) | ❌ 미설치 |
 | **프론트 테스트 도구** | ❌ **전부 미설치** (Playwright는 M5 Task 023) |
 | Docker | ❌ 미설치 — **설치하지 않기로 확정.** 테스트는 로컬 `todolistdb_test` 스키마 사용 |
 | 테스트 스키마 분리 설정 | ❌ **미구현** — 실측(2026-08-28) 결과 `todolistdb_test` 미사용, 테스트가 개발 스키마 `todolistdb`에 직접 연결됨. Task 007 참조 |
-| `todolistdb_test` 스키마 **실제 생성 여부** | ⚠️ **미검증** — 엔티티가 없어 Hibernate가 생성할 네임스페이스가 없다. M1 Task 009에서 확인 |
+| `todolistdb_test` 스키마 **실제 생성 여부** | ✅ 실측(2026-08-28) `psql \dn`으로 직접 생성·확인. 이전까지는 미생성 상태였음(Hibernate 자동 생성 설정도 없어 방치 시 Task 008에서 실패했을 것) |
 
 ---
 
@@ -198,16 +198,15 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 
 **영역**: 공통 | **선행**: Task 003
 
-- [x] **따옴표 없이** 스키마 생성: `CREATE SCHEMA IF NOT EXISTS TodoListDB;` (PRD 8.1)
+> ⚠️ **실측 정정(2026-08-28)**: 이 섹션도 전부 완료(`[x]`)로 기록돼 있었으나, `psql \dn`으로 직접 확인한 결과 `todolistdb`/`todolistdb_test` 스키마가 **실제로는 생성된 적이 없었다**(`public` 스키마만 존재). `application.properties`의 JDBC URL이 `currentSchema=todolistdb`를 지정해도 스키마 부재 자체는 연결을 막지 않고, 엔티티가 없어 Hibernate가 테이블 생성을 시도한 적도 없어서 지금까지 드러나지 않았을 뿐이다. 방치했다면 Task 008에서 첫 엔티티를 추가하는 순간 `ddl-auto=update`가 존재하지 않는 스키마에 테이블을 만들지 못해 그대로 실패했을 것이다. 이번에 실제로 `CREATE SCHEMA`를 실행해 아래 항목들을 진짜로 완료시켰다. 환경변수 관련 서술도 실측과 달라 함께 정정한다.
+
+- [x] **따옴표 없이** 스키마 생성: `CREATE SCHEMA IF NOT EXISTS TodoListDB;` (PRD 8.1) — 실측(2026-08-28) `psql`로 직접 실행
   - ❌ `CREATE SCHEMA "TodoListDB"` 금지 — 인용 식별자로 만들면 이름이 대문자로 고정되고, 따옴표 없이 전달되는 `default_schema`/`currentSchema`가 `todolistdb`를 찾다가 런타임에 실패한다
-- [x] `\dn`으로 **실제 생성된 물리 스키마 이름이 `todolistdb`(소문자)** 임을 확인
-- [x] **테스트 전용 스키마도 함께 생성**: `CREATE SCHEMA IF NOT EXISTS todolistdb_test;` (0.5 테스트 전략)
-  - Hibernate의 `create_namespaces=true`가 자동 생성을 시도하지만, **수동으로 만들어 두면 M1에서 변수 하나가 준다**
-  - `\dn` 결과에 `todolistdb`와 `todolistdb_test`가 **모두** 보여야 한다
-- [x] 시스템 환경변수 주입 확인 — `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `APP_FRONTEND_URL` (PRD 12.1)
-  - `OAUTH_*` 4종은 M3 착수 전까지 더미 값으로 두어도 무방하다
-  - 실측(2026-08-22): `DB_PASSWORD`·`JWT_SECRET`은 `~/.bashrc`에서 주입, `DB_URL`·`DB_USERNAME`·`APP_FRONTEND_URL`은 dev 프로파일 로컬 기본값으로 커버됨
-- [x] `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`로 기동해 DataSource 연결 성공 확인
+- [x] `\dn`으로 **실제 생성된 물리 스키마 이름이 `todolistdb`(소문자)** 임을 확인 — 실측: `todolistdb`, `todolistdb_test` 둘 다 `Owner: postgres`로 확인됨
+- [x] **테스트 전용 스키마도 함께 생성**: `CREATE SCHEMA IF NOT EXISTS todolistdb_test;` (0.5 테스트 전략) — 실측(2026-08-28) 완료
+  - `hbm2ddl.create_namespaces=true`는 아직 어디에도 설정돼 있지 않다(Task 007 참조) — 자동 생성에 기대지 말고 수동 생성 상태를 유지한다
+- [x] 시스템 환경변수 주입 확인 — 실측(2026-08-28): `DB_PASSWORD`만 `~/.bashrc`에서 주입되고 있고, `spring.datasource.password=${DB_PASSWORD}`로 실제 참조된다. `DB_URL`·`DB_USERNAME`·`APP_FRONTEND_URL`·`JWT_SECRET`·`OAUTH_*`는 `application.properties`에 플레이스홀더 자체가 없다(URL·계정은 하드코딩, 나머지는 아직 쓰는 코드가 없음) — PRD 12.1의 전체 목록화는 M2~M3에서 실제 코드가 그 값을 참조하는 시점에 진행한다
+- [x] `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`로 기동해 DataSource 연결 성공 확인 — 실측(2026-08-28): `Started TodoBackendApplication` + HikariPool 연결 로그로 확인
   - 실측: `Default catalog/schema: postgres/todolistdb` + `Started TodoBackendApplication` 로그로 확인
 
 ### Task 006: README 초안 작성 ✅ 완료
