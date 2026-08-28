@@ -171,28 +171,26 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 
 **이 프로젝트는 모노레포가 아니라 세 개의 독립 저장소로 관리한다.** 백엔드·프론트엔드의 GitHub 저장소가 애초에 분리되어 있어, 루트를 문서 전용 저장소로 두는 구성을 택했다.
 
+> ⚠️ **실측 정정(2026-08-28)**: 이 섹션은 GitHub 계정명이 실제와 다르게(`kdongjin`) 적혀 있었고, 코드 저장소 두 곳에 `develop` 브랜치가 없었으며, 커밋 메시지·개수도 실제 로그와 달랐다. 아래 표·체크리스트를 실제 `git log`/`git remote -v` 기준으로 다시 썼다.
+
 | 저장소 | 담당 | GitHub | 브랜치 |
 |--------|------|--------|--------|
-| 루트 `todo-project/` | `docs/` · `CLAUDE.md` · `.claude/` | (신규 생성 필요) | `main` |
-| `todo-backend/` | 백엔드 코드 | `kdongjin/todo-backend` | `main` + `develop` |
-| `todo-frontend/` | 프론트 코드 | `kdongjin/todo-frontend` | `main` + `develop` |
+| 루트 `todo-project/` | `docs/` · `CLAUDE.md` · `.claude/` | (미생성 — 로컬 저장소만 존재) | `main` |
+| `todo-backend/` | 백엔드 코드 | `Jangahjin/todo-backend` | `main` + `develop` |
+| `todo_frontend/` | 프론트 코드 | `Jangahjin/todo-frontend` (원격 저장소명은 하이픈, 로컬 폴더명은 언더스코어 — 의도적 불일치이며 버그 아님) | `main` + `develop` |
 
 > ⚠️ **루트 `.gitignore`에서 하위 두 폴더를 반드시 제외한다.** 제외하지 않으면 git이 이들을 **embedded repository**로 인식해 내용 대신 커밋 해시만 기록하고(gitlink), clone 시 빈 디렉토리로 나온다.
 > **문서 저장소는 `develop`을 두지 않는다** — 통합·안정화할 빌드가 없어 순수 오버헤드다.
 
-- [x] 루트 `.gitignore`에 `todo-backend/`·`todo-frontend/`·`.metadata/` 제외 추가
-- [x] `todo-backend`: `.gitignore`에 시크릿 규칙 보강 → `main` 브랜치 → **커밋 3개** → `develop` 생성
-  - `chore: Spring Boot 4 프로젝트 골격 추가`
-  - `chore: 설정 파일 프로파일 분리 및 시크릿 환경변수화`
-  - `test: 테스트 전용 설정 및 스키마 분리`
-- [x] `todo-frontend`: **커밋 2개** → `develop` 생성
-  - `chore: shadcn/ui 초기화 및 디자인 토큰 설정`
-  - `chore: VS Code Tailwind 4 린트 설정 추가`
-- [x] 루트: `git init` → `main` → **커밋 1개** (`docs: PRD·ROADMAP·API_SPEC 및 프로젝트 지침 추가`)
-- [x] **커밋 전 시크릿 스캔** — 세 저장소 모두 평문 시크릿 0건 확인 (불변 규칙 9)
-- [x] embedded repository 경고 없음 확인
-- [ ] **루트용 GitHub 저장소 생성** (사용자 작업 — `gh` CLI 미설치)
-- [ ] 세 저장소 push — 코드 저장소는 `main`·`develop` 둘 다
+- [x] 루트 `.gitignore`에 `todo-backend/`·`todo_frontend/`·`.metadata/` 제외 추가 — 실측: 언더스코어로 정확히 반영돼 있음(과거 하이픈 오타는 커밋 `557fdf5`에서 이미 수정됨)
+- [x] `todo-backend`: `main` 브랜치, **커밋 1개**(`8fd432c feat: Spring Boot 백엔드 프로젝트 초기 스캐폴드`) → `develop` 브랜치는 실측 결과 없었던 것을 2026-08-28에 `main`에서 새로 분기해 생성
+- [x] `todo_frontend`: `main` 브랜치, **커밋 2개**(`9a19913 Initial commit from Create Next App`, `a681025 feat: Tailwind CSS 4 + shadcn/ui 초기 설정 추가`) → `develop` 브랜치는 실측 결과 없었던 것을 2026-08-28에 `main`에서 새로 분기해 생성
+- [x] 루트: `git init` → `main`(2026-08-28에 `master`에서 rename) → **커밋 6개**, 최초 커밋은 `8c66e08 완성`
+- [x] **커밋 전 시크릿 스캔** — 세 저장소 모두 평문 시크릿 0건 확인 (불변 규칙 9). 단, `todo-backend`의 `application.properties`는 `.gitignore` 처리돼 있어 커밋 대상 자체가 아니었을 뿐, 파일 안에는 한때 평문 `DB_PASSWORD`가 있었다(2026-08-28에 `${DB_PASSWORD}`로 수정, 커밋되지 않는 파일이라 히스토리에는 안 남음)
+- [x] embedded repository 경고 없음 확인 — 실측: 루트 `git ls-files`에 `todo-backend`/`todo_frontend` gitlink 없음
+- [ ] **루트용 GitHub 저장소 생성 및 push** (사용자 작업 — `gh` CLI 미설치, `git remote -v` 결과 원격 없음)
+- [x] `todo-backend`·`todo_frontend`는 원격(`origin`) 설정은 돼 있으나(`Jangahjin/todo-backend`, `Jangahjin/todo-frontend`) — 실측: `git ls-remote --heads origin` 결과 브랜치가 하나도 없어 **아직 push된 적이 없다**
+- [ ] 세 저장소 push — 코드 저장소는 `main`·`develop` 둘 다, 루트는 원격 생성 후
 
 ### Task 005: PostgreSQL `TodoListDB` 스키마 준비 및 연결 검증 ✅ 완료
 
