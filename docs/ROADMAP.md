@@ -141,15 +141,18 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
   - React Query·Framer Motion·React Hook Form·Zod는 **M5**, Tiptap은 **M7**에서 설치한다 (PRD 1.3 설치 상태 표)
 - [x] 루트 `.gitignore` — 시크릿·빌드 산출물·IDE·로그 규칙 포함
 
-### Task 002: 백엔드 설정 파일 분리 및 시크릿 환경변수화 ✅ 완료
+### Task 002: 백엔드 설정 파일 분리 및 시크릿 환경변수화 ⚠️ 부분 완료
 
 **영역**: BE
 
-- [x] `application.properties`(공통) / `application-dev.properties`(update) / `application-prod.properties`(validate) 3분할
-- [x] 전 시크릿을 `${ENV}` 플레이스홀더로 치환 — 평문 비밀번호 제거 (CLAUDE.md 불변 규칙 9, PRD_VALIDATION Critical #1 해소)
-- [x] Kakao OAuth2 `provider` 블록 + `registration`의 무기본값 항목 5종 등록 (PRD 12.2)
-  - 누락 시 **M3가 아니라 기동 시점에** `Provider ID must be specified` / `authorizationGrantType cannot be null`로 실패한다
-- [x] `src/test/resources/application.properties` 생성 — 테스트 전용 더미 값
+> ⚠️ **실측 정정(2026-08-28)**: 이 섹션 전체가 완료(`[x]`)로 기록돼 있었으나 확인 결과 프로파일 3분할과 전체 시크릿 환경변수화는 되어 있지 않았다. Kakao OAuth2 설정만 이번에 실제로 구현·검증했다. 나머지 두 항목은 M2(Security/JWT) 착수 시 함께 처리한다.
+
+- [ ] `application.properties`(공통) / `application-dev.properties`(update) / `application-prod.properties`(validate) 3분할 — 실측: 아직 `application.properties` 1개뿐, 프로파일 분리 안 됨(`ddl-auto`가 공통 파일에 하드코딩돼 있어 지금은 dev/prod 구분이 없음)
+- [ ] 전 시크릿을 `${ENV}` 플레이스홀더로 치환 — 실측: `DB_PASSWORD`·`OAUTH_KAKAO_CLIENT_ID`·`OAUTH_KAKAO_CLIENT_SECRET`만 env화됨. `DB_URL`·`DB_USERNAME`은 아직 하드코딩(`localhost:5432/postgres`, `postgres`)이고 `JWT_SECRET`은 이를 쓰는 코드 자체가 없음(M2 예정)
+- [x] Kakao OAuth2 `provider` 블록 + `registration`의 무기본값 항목 5종 등록 (PRD 12.2) — 실측(2026-08-28) main·test properties에 반영 완료, `./mvnw clean test` `Tests run: 6, Failures: 0` / `BUILD SUCCESS`로 정상 기동 확인
+  - `OAUTH_KAKAO_CLIENT_ID`/`SECRET`은 `${ENV:더미값}` 폴백을 둬서 실제 Kakao 앱 등록 전(M3)에도 기동 가능하게 함
+  - 누락 시 **M3가 아니라 기동 시점에** `Provider ID must be specified` / `authorizationGrantType cannot be null`로 실패한다 — PRD의 이 경고를 그대로 신뢰하고 두 블록을 한 번에 채웠다
+- [x] `src/test/resources/application.properties` 생성 — 테스트 전용 더미 값 (Task 007에서 완료, Kakao 더미 값은 이번에 추가)
   - ⚠️ 이 파일은 main 쪽 properties를 **완전히 가린다(shadow)**. 테스트에 필요한 설정을 자립적으로 모두 적어야 한다
 
 ### Task 003: JDK 21 개발 환경 고정 ✅ 완료
