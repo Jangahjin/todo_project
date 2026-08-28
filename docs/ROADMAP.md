@@ -108,20 +108,20 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 | `todo-frontend` 골격 (Next.js 16.3.1 / React 19.2.8 / Tailwind 4 / shadcn) | ✅ 완료 |
 | `application.properties` 3파일 분리 + 전 시크릿 `${ENV}` 처리 | ✅ 완료 |
 | Kakao OAuth2 `provider`/`registration` 블록 | ✅ 완료 |
-| `src/test/resources/application.properties` (테스트 전용 더미) | ✅ 완료 |
+| `src/test/resources/application.properties` (테스트 전용 더미) | ❌ **미구현** — 실측(2026-08-28) 결과 파일 없음, Task 007 참조 |
 | 루트 `.gitignore` | ✅ 완료 |
-| `./mvnw test` 통과 | ✅ 확인됨 (단, JDK 21 명시 필요) |
+| `./mvnw clean test` 통과 (JDK 21) | ✅ 실측(2026-08-28) 확인 — `BUILD SUCCESS`, `Tests run: 1, Failures: 0` |
 | **Git 저장소 구성** | ✅ **3-저장소 구성 완료** — 루트(문서, `main`) · `todo-backend`(`main`+`develop`, 커밋 3) · `todo-frontend`(`main`+`develop`, 커밋 3) |
 | 루트용 GitHub 저장소 | ❌ **미생성** — `gh` CLI 없어 웹에서 직접 생성 필요 |
 | 세 저장소 push | ❌ 미실행 |
-| **`JAVA_HOME`** | ⚠️ `zulu17`을 가리킴 → **JDK 21(`C:\Program Files\Java\jdk-21.0.11`) 전환 필요** |
+| **`JAVA_HOME`** | ✅ 실측(2026-08-28) `C:\SpringBootProject\zulu21`로 확인, 새 셸 `java -version`/`./mvnw -v` 모두 21 보고 |
 | 루트 `README.md` | ❌ 없음 |
 | PostgreSQL `TodoListDB` 스키마 물리명 확인 | ⚠️ 미확인 (`\dn` 실측 필요) |
 | 백엔드 도메인 코드 | ❌ 없음 (`TodoBackendApplication`, `TodoBackendApplicationTests`만 존재) |
 | 프론트 라이브러리 (React Query·Framer Motion·RHF·Zod·Tiptap) | ❌ 미설치 |
 | **프론트 테스트 도구** | ❌ **전부 미설치** (Playwright는 M5 Task 023) |
 | Docker | ❌ 미설치 — **설치하지 않기로 확정.** 테스트는 로컬 `todolistdb_test` 스키마 사용 |
-| 테스트 스키마 분리 설정 | ✅ 완료 (`src/test/resources/application.properties`) |
+| 테스트 스키마 분리 설정 | ❌ **미구현** — 실측(2026-08-28) 결과 `todolistdb_test` 미사용, 테스트가 개발 스키마 `todolistdb`에 직접 연결됨. Task 007 참조 |
 | `todolistdb_test` 스키마 **실제 생성 여부** | ⚠️ **미검증** — 엔티티가 없어 Hibernate가 생성할 네임스페이스가 없다. M1 Task 009에서 확인 |
 
 ---
@@ -152,16 +152,18 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 - [x] `src/test/resources/application.properties` 생성 — 테스트 전용 더미 값
   - ⚠️ 이 파일은 main 쪽 properties를 **완전히 가린다(shadow)**. 테스트에 필요한 설정을 자립적으로 모두 적어야 한다
 
-### Task 003: JDK 21 개발 환경 고정 🔥 우선순위
+### Task 003: JDK 21 개발 환경 고정 ✅ 완료
 
 **영역**: 공통 | **선행**: Task 001
 
-현재 `JAVA_HOME`이 `C:\SpringBootProject\zulu17`을 가리켜 `java -version`이 **17**을 보고한다. JDK 21은 `C:\Program Files\Java\jdk-21.0.11`에 설치되어 있다.
+~~현재 `JAVA_HOME`이 `C:\SpringBootProject\zulu17`을 가리켜 `java -version`이 17을 보고한다. JDK 21은 `C:\Program Files\Java\jdk-21.0.11`에 설치되어 있다.~~ — 위 서술은 부정확했다. 실측으로 대체한다.
 
-- [ ] `JAVA_HOME`을 `C:\Program Files\Java\jdk-21.0.11`로 전환 (사용자 환경변수, 영구 적용)
-- [ ] 새 셸에서 `java -version`이 **21**을 보고하는지 확인
-- [ ] `./mvnw -v`가 Java 21을 사용하는지 확인
-- [ ] 전환 후 `./mvnw clean test` 재실행 — 17로 되돌아가면 `release version 21 not supported`로 컴파일 자체가 실패한다
+실측(2026-08-28): Machine 레벨 `JAVA_HOME`은 이미 `C:\SpringBootProject\zulu21`로 설정돼 있었고 System PATH에도 `zulu21\bin`이 등록돼 있었다(`C:\Program Files\Java\jdk-21.0.11`은 별개로 설치만 돼 있을 뿐 실제로 쓰인 적 없음). 문제의 실체는 JDK 경로가 아니라 **세션 프로세스의 PATH 캐시**였다 — Windows는 System 환경변수를 GUI로 바꿔도 이미 떠 있는 explorer.exe와 그 자식 프로세스(터미널)에는 로그오프 전까지 반영하지 않으므로, 기존 터미널이 zulu17이 우선하던 옛 PATH를 계속 물려받고 있었다. 추가로 `~/.bash_profile`이 없어 Git Bash 로그인 셸이 `~/.bashrc`를 아예 읽지 않는 상태였다.
+
+- [x] `~/.bashrc`에 `JAVA_HOME=C:\SpringBootProject\zulu21`·`PATH` 우선순위를 명시하고, `~/.bash_profile`을 생성해 `.bashrc`를 로드하도록 연결 — Windows PATH 전파 지연과 무관하게 Git Bash 세션은 항상 21을 쓰도록 고정
+- [x] 새 셸에서 `java -version`이 **21**(`openjdk version "21.0.12.1"`, Zulu21.52+203-CA)을 보고함을 확인
+- [x] `./mvnw -v`가 `Java version: 21.0.12.1, vendor: Azul Systems, Inc., runtime: C:\SpringBootProject\zulu21`을 보고함을 확인
+- [x] 전환 후 `./mvnw clean test` 재실행 — `Tests run: 1, Failures: 0, Errors: 0` / `BUILD SUCCESS`로 통과. 17로 되돌아갔다면 `release version 21 not supported`로 컴파일 자체가 실패했을 것이므로, 이 통과 자체가 JDK 21 적용의 최종 증거
 
 ### Task 004: Git 저장소 구성 및 초기 커밋 ✅ 완료
 
@@ -239,26 +241,28 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 
 **목표**: 테스트 인프라·엔티티·공통 응답·예외·Soft Delete 기반을 마련하고, **PRD가 M1 실측으로 미룬 기술 불확실성 2건을 확정**한다.
 
-### Task 007: 백엔드 테스트 인프라 구축 ✅ 완료
+### Task 007: 백엔드 테스트 인프라 구축 ⚠️ 미구현 (문서·코드 불일치 정정)
 
 **영역**: BE | **선행**: Task 003, 005
 
 M1 이후 모든 DoD가 "테스트로 확인"을 요구하는데, **테스트 DB 전략이 아직 없다.** 이 Task를 M1의 첫 작업으로 둔다.
 
-- [x] ~~테스트 DB 전략 확정~~ — ✅ **완료. 로컬 `todolistdb_test` 스키마로 확정** (0.5 · PRD 13.1)
+> ⚠️ **실측 정정(2026-08-28)**: 이 섹션은 이전에 전부 완료(`[x]`)로 기록돼 있었으나, 실제로는 구현된 적이 없다. `todo-backend`의 git 커밋은 초기 스캐폴드 1개(`8fd432c`)뿐이고 `src/test/`에는 Spring Initializr 기본 `TodoBackendApplicationTests.java`(빈 `contextLoads()`)만 존재한다. `IntegrationTestSupport`, `TestIsolationVerificationTest`, `src/test/resources/application.properties`는 전부 없다. 이 상태로 `./mvnw clean test`를 돌리면 테스트가 격리 없이 **개발 스키마 `todolistdb`에 직접 연결**되어 CLAUDE.md 규칙 #15(테스트는 `todolistdb_test`, 개발은 `todolistdb`)를 위반한다 — 실제로 2026-08-28 실행에서 이 위반이 로그로 확인됐다. 아래 체크박스는 전부 미완료로 되돌리고, M1 착수 시 실제로 구현해야 한다.
+
+- [ ] 테스트 DB 전략 확정 — 로컬 `todolistdb_test` 스키마로 확정 (0.5 · PRD 13.1)
   - Testcontainers 제외(Docker 미도입 확정), H2 제외(JSONB·식별자 폴딩 재현 불가)
-- [x] ~~테스트 properties에 스키마 분리 반영~~ — ✅ **완료** (`src/test/resources/application.properties`)
+- [ ] 테스트 properties에 스키마 분리 반영 (`src/test/resources/application.properties`)
   - `DB_URL`을 상속하지 않고 `currentSchema=todolistdb_test` 직접 지정, `hbm2ddl.create_namespaces=true` 설정
   - ⚠️ 테스트 properties는 main을 shadow하므로 **필요한 설정을 전부 자립적으로** 적는다 (Kakao `provider`/`registration` 블록 포함)
-- [x] **`todolistdb_test` 스키마가 실제로 생성되는지 확인** — 실측: Hikari 연결 로그에 `Default catalog/schema: postgres/todolistdb_test` 확인됨 (스키마는 Task 005에서 수동 생성됨)
-- [x] 테스트 베이스 클래스 마련 — `com.example.support.IntegrationTestSupport` (`@SpringBootTest` + `@AutoConfigureMockMvc` + `@Transactional`)
+- [ ] **`todolistdb_test` 스키마가 실제로 생성되는지 확인** — Hikari 연결 로그에 `Default catalog/schema: postgres/todolistdb_test`가 찍히는지로 검증 (스키마 자체는 Task 005에서 수동 생성됐다는 전제이나 재확인 필요)
+- [ ] 테스트 베이스 클래스 마련 — `com.example.support.IntegrationTestSupport` (`@SpringBootTest` + `@AutoConfigureMockMvc` + `@Transactional`)
   - ⚠️ Spring Boot 4에서 `AutoConfigureMockMvc`의 패키지가 `org.springframework.boot.webmvc.test.autoconfigure`로 변경됨 (기존 `org.springframework.boot.test.autoconfigure.web.servlet`는 존재하지 않음)
   - 데이터 격리는 `@Transactional` 롤백 방식 채택 — 테스트 메서드 종료 시 자동 롤백
-- [x] 패키지 구조 확정: 도메인 엔티티가 아직 없어(Task 008·009 예정) `domain`/`auth`/`todo` 하위 패키지는 실제 코드 추가 시점에 생성한다. 공통 테스트 인프라는 `com.example.support`에 둔다
+- [ ] 패키지 구조 확정: 도메인 엔티티가 아직 없어(Task 008·009 예정) `domain`/`auth`/`todo` 하위 패키지는 실제 코드 추가 시점에 생성한다. 공통 테스트 인프라는 `com.example.support`에 둔다
 
 **테스트 체크리스트 (JUnit 5 + Spring Boot Test)**
-- [x] 기존 `TodoBackendApplicationTests.contextLoads()`가 새 전략에서 통과
-- [x] 테스트 두 개를 연속 실행해도 데이터가 서로 오염되지 않음 — `com.example.support.TestIsolationVerificationTest`로 scratch 테이블 insert/count 검증(`@Transactional` 롤백으로 두 번째 테스트가 첫 번째 테스트의 행을 보지 못함, 테이블 자체도 DDL 롤백으로 남지 않음을 확인)
+- [ ] 기존 `TodoBackendApplicationTests.contextLoads()`가 새 전략에서 통과
+- [ ] 테스트 두 개를 연속 실행해도 데이터가 서로 오염되지 않음 — `com.example.support.TestIsolationVerificationTest`로 scratch 테이블 insert/count 검증(`@Transactional` 롤백으로 두 번째 테스트가 첫 번째 테스트의 행을 보지 못함, 테이블 자체도 DDL 롤백으로 남지 않음을 확인)
 
 ### Task 008: BaseEntity·JPA Auditing 및 Soft Delete 기반 구축
 
