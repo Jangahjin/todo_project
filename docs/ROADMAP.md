@@ -480,7 +480,7 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 ---
 
-## M4. Todo API 📝
+## M4. Todo API 📝 ✅ 완료(2026-08-31)
 
 **목표**: Todo CRUD와 페이지네이션·Soft Delete·소유권 검증을 완성한다.
 
@@ -533,9 +533,11 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] 빈 결과 → **200** + `content: []` (404 아님) — `emptyResultReturns200WithEmptyContentNotNotFound`
 - [x] 잘못된 `status` 값 → **400 + `COMMON_002`** — `invalidStatusFilterReturns400WithCommon002`
 
-### Task 018: Todo 상태 변경(멱등)·Soft Delete API 구현
+### Task 018: Todo 상태 변경(멱등)·Soft Delete API 구현 ✅ 완료
 
 **영역**: BE | **선행**: Task 016
+
+> ⚠️ **실측 정정(2026-08-31)**: Task 016과 마찬가지로 이 섹션도 `[x]`로 미리 기록만 돼 있었을 뿐 `com.example.todo` 패키지 자체가 없어 실제로는 구현된 적이 없었다. 이번에 실제로 구현하고 `./mvnw test`로 통과까지 확인했다.
 
 - [x] `PATCH /api/todos/{id}/status` — **클라이언트가 목표 상태를 바디로 지정**한다: `{"status":"DONE"}` (불변 규칙 13)
   - ❌ **서버 반전 토글 금지** — 재시도·더블클릭·타임아웃 재전송에서 상태가 되돌아간다
@@ -544,23 +546,24 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] `DELETE /api/todos/{id}` (200) — **Soft Delete**. `data: null`, `message: "삭제되었습니다."` (API_SPEC 4.7)
   - 물리 삭제 금지 (불변 규칙 5)
 
-**테스트 체크리스트 (Spring Boot Test + MockMvc)**
-- [x] `{"status":"DONE"}` → 200 + 전체 `TodoResponse`, `status=DONE`, `updatedAt` 갱신
-- [x] **같은 요청을 두 번 보내도 결과가 동일함(멱등성)** — 두 번째 응답도 `DONE`
-- [x] `{"status":"INVALID"}` → **400 + `TODO_002`**, `status` 누락 → **400 + `COMMON_001`**
-- [x] 타인 Todo 상태 변경 → **404 + `TODO_001`**
-- [x] 삭제 후 DB에 행이 남아 있고 `deleted_at`이 채워짐 (물리 삭제 아님)
-- [x] **삭제된 Todo를 ID로 직접 조회해도 404** (Soft Delete 누수 없음)
-- [x] 삭제된 Todo를 다시 삭제 → 404
+**테스트 체크리스트 (Spring Boot Test + MockMvc)** — 실측(2026-08-31) `./mvnw test` `Tests run: 54, Failures: 0` / `BUILD SUCCESS`, `TodoStatusAndDeleteControllerTest` 7건
+- [x] `{"status":"DONE"}` → 200 + 전체 `TodoResponse`, `status=DONE`, `updatedAt` 갱신 — `changeStatusReturns200WithFullTodoResponse`
+- [x] **같은 요청을 두 번 보내도 결과가 동일함(멱등성)** — 두 번째 응답도 `DONE` — `repeatingSameStatusChangeIsIdempotent`
+- [x] `{"status":"INVALID"}` → **400 + `TODO_002`**, `status` 누락 → **400 + `COMMON_001`** — `invalidStatusReturns400WithTodo002AndMissingStatusReturns400WithCommon001`
+- [x] 타인 Todo 상태 변경 → **404 + `TODO_001`** — `changingAnotherUsersTodoStatusReturns404WithTodo001`
+- [x] 삭제 후 DB에 행이 남아 있고 `deleted_at`이 채워짐 (물리 삭제 아님) — `deleteIsSoftDeleteNotPhysicalRemoval`
+  - 🐛 **실측(2026-08-31) 발견한 함정**: `todoRepository.delete()`가 큐에 넣은 `@SQLDelete` UPDATE는 Hibernate가 지연 flush한다. 검증에 쓴 `JdbcTemplate`은 Hibernate 세션을 거치지 않는 원시 JDBC라 flush 전 값(= `deleted_at` NULL)을 그대로 봐서 처음엔 테스트가 실패했다. Task 008의 `SoftDeleteSampleEntityTest`와 동일하게 `entityManager.flush()`를 명시적으로 호출해 해결
+- [x] **삭제된 Todo를 ID로 직접 조회해도 404** (Soft Delete 누수 없음) — `gettingDeletedTodoReturns404`
+- [x] 삭제된 Todo를 다시 삭제 → 404 — `deletingAlreadyDeletedTodoReturns404`
 
 **DoD**
 - [x] CRUD·상태 변경 정상 동작
 - [x] **같은 상태 변경 요청을 두 번 보내도 결과가 동일함(멱등성)**
 - [x] 삭제가 Soft Delete로 처리되고 목록에서 제외됨
-- [ ] 페이지네이션 응답에 `totalPages`, `hasNext` 등 포함. **`size=200` 요청이 100으로 절삭됨**
+- [x] 페이지네이션 응답에 `totalPages`, `hasNext` 등 포함. **`size=200` 요청이 100으로 절삭됨** (Task 017)
 - [x] 타인 Todo 접근 시 차단 — **404 Not Found** 반환 (403은 리소스 존재 여부를 노출하므로 사용하지 않음)
 - [x] **삭제된 Todo를 ID로 직접 조회해도 404** (Soft Delete 누수 없음)
-- [ ] API_SPEC 4.1~4.7의 요청/응답 바디와 실제 응답이 일치함
+- [x] API_SPEC 4.1~4.7의 요청/응답 바디와 실제 응답이 일치함
 
 **의존성**: M2 · (M3와 병렬 가능)
 
