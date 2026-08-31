@@ -32,14 +32,14 @@
 | **JWT** | `io.jsonwebtoken:jjwt` **0.12.6** (api / impl / jackson) | ✅ 설치됨 |
 | **Frontend** | Next.js **16.3.1** (App Router), React **19.2.8**, TypeScript 5, Tailwind CSS 4 | ✅ 설치됨 |
 | **UI** | shadcn **CLI 4.18.0** (style `radix-nova`, baseColor `neutral`), radix-ui, lucide-react **1.33.0** | ✅ 설치됨 |
-| **상태/모션** | React Query(TanStack Query) `@tanstack/react-query` **5.102.0**, `motion` **13.1.1**(Framer Motion 후신 패키지) | ✅ 설치됨 |
-| **에디터** | Tiptap (리치 텍스트 웹에디터) `@tiptap/react` **3.30.2**, `@tiptap/starter-kit` **3.30.2** | ✅ 설치됨 |
-| **폼 검증** | React Hook Form **7.86.0** + Zod **4.4.3** + `@hookform/resolvers` **5.9.1** (프론트) / Bean Validation (백엔드) | ✅ 프론트·백엔드 모두 설치됨 |
-| **인증** | JWT (Access Token, 24시간 만료) + OAuth2 소셜 로그인 (Google, Kakao) | ✅ 완료 (M2·M3 구현·커밋 완료) |
+| **상태/모션** | React Query(TanStack Query) `@tanstack/react-query` **5.102.8**, `motion` **13.1.1**(Framer Motion 후신 패키지, React 19 호환 확인) | ✅ 설치됨 — 실측(2026-08-31, Task 019) |
+| **에디터** | Tiptap (리치 텍스트 웹에디터) `@tiptap/react`, `@tiptap/starter-kit` | ❌ **미설치** — ROADMAP대로 **M7(Task 028)** 에서 설치 예정. 실측(2026-08-31): `package.json`에 없음(이 표에 "✅ 설치됨"으로 잘못 기록돼 있던 것을 정정) |
+| **폼 검증** | React Hook Form **7.87.0** + Zod **4.5.4** + `@hookform/resolvers` **5.9.1** (프론트) / Bean Validation (백엔드) | ✅ 프론트·백엔드 모두 설치됨 — 실측(2026-08-31, Task 019) |
+| **인증** | JWT (Access Token, 24시간 만료) + OAuth2 소셜 로그인 (Google, Kakao) | ⚠️ **JWT만 완료(M2)**. OAuth2 소셜 로그인(M3, Task 014~015)은 **미착수** — 실측(2026-08-31) 정정: Kakao `client-id`/`secret`이 아직 더미값(`OAUTH_KAKAO_CLIENT_ID:dummy-...`)이고 `CustomOAuth2UserService`/`OAuth2SuccessHandler` 코드 자체가 없다 |
 | **Database** | PostgreSQL (스키마명: `TodoListDB`) | ✅ 완료 (M0에서 `todolistdb` 소문자 폴딩 실측 확인) |
 | **테스트 (BE)** | JUnit 5 + Spring Boot Test (MockMvc) | ✅ 완료 (M1 Task 007에서 인프라 구축 완료) |
 | **테스트 DB** | **로컬 PostgreSQL 테스트 스키마 `todolistdb_test`** | ✅ 완료 (M1 Task 007에서 구축 완료) |
-| **테스트 (FE)** | **Playwright** (E2E 전용) | ✅ **설치됨** (Task 023) |
+| **테스트 (FE)** | **Playwright** (E2E 전용) | ❌ **미설치** — **Task 023(M5)** 에서 설치 예정. 실측(2026-08-31) 정정: `package.json`에 없고 `playwright.config.ts`도 없음 |
 | **배포** | AWS Amplify(FE), EC2(BE), RDS(DB) | ⏳ M9 |
 | **형상관리** | Git, GitHub | ✅ |
 

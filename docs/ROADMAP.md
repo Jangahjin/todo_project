@@ -573,15 +573,17 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 **목표**: 라이브러리 설치, 디자인 시스템, 상태관리, API 클라이언트, 페이지네이션 컴포넌트, **E2E 테스트 환경**을 준비한다.
 
-### Task 019: 프론트 라이브러리 설치 및 PRD 1.3 표 갱신
+### Task 019: 프론트 라이브러리 설치 및 PRD 1.3 표 갱신 ✅ 완료
 
 **영역**: FE | **선행**: M0
 
-- [x] `@tanstack/react-query`, `react-hook-form`, `zod`, `@hookform/resolvers` 설치
-- [x] **Framer Motion 설치 — 패키지명 확인 필요.** 최신 배포는 `motion` 패키지로 이관되었다. 설치 전 공식 문서로 정확한 패키지명·React 19 호환 버전을 확인한다 (CLAUDE.md 5장 "추측 금지")
-- [x] Tiptap은 **M7(Task 028)** 에서 설치한다 — 지금 `import` 하지 않는다
-- [x] 설치 후 **PRD 1.3 표의 설치 상태를 ✅와 실제 버전으로 갱신**
-- [x] `npm run lint` + `npm run build` 통과 확인
+> ⚠️ **실측 정정(2026-08-31)**: 이 섹션이 `[x]`로 미리 기록돼 있었으나 `package.json`에 다섯 라이브러리 중 무엇도 없었다(M4와 동일한 패턴). 게다가 PRD 1.3 표는 여기뿐 아니라 **Tiptap·OAuth2·Playwright까지 "완료/설치됨"으로 잘못 기록**돼 있었다 — 이번에 실제로 설치한 5개 외에 Tiptap·Playwright·OAuth2 상태도 함께 정정했다(각각 M7/M5/M3 미착수로).
+
+- [x] `@tanstack/react-query`, `react-hook-form`, `zod`, `@hookform/resolvers` 설치 — 실측(2026-08-31) `npm install`로 실제 설치, `npm list --depth=0`로 버전 확인(각 5.102.8 / 7.87.0 / 4.5.4 / 5.9.1)
+- [x] **Framer Motion 설치 — 패키지명 확인 필요.** 최신 배포는 `motion` 패키지로 이관되었다. 설치 전 공식 문서로 정확한 패키지명·React 19 호환 버전을 확인한다 (CLAUDE.md 5장 "추측 금지") — 실측: `npm view motion peerDependencies`로 `react: ^18.0.0 || ^19.0.0` 확인 후 `motion@13.1.1` 설치
+- [x] Tiptap은 **M7(Task 028)** 에서 설치한다 — 지금 `import` 하지 않는다 — 실측: 설치하지 않았고, PRD 1.3의 잘못된 "✅ 설치됨" 표기도 함께 정정
+- [x] 설치 후 **PRD 1.3 표의 설치 상태를 ✅와 실제 버전으로 갱신** — Tiptap/OAuth2/Playwright의 오기도 함께 바로잡음
+- [x] `npm run lint` + `npm run build` 통과 확인 — 실측(2026-08-31) 둘 다 에러 없이 통과(`Compiled successfully`)
 
 ### Task 020: 디자인 토큰·테마 프로바이더 구성 (Calm Minimal)
 
