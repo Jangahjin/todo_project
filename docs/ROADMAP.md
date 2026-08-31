@@ -356,30 +356,36 @@ M1 이후 모든 DoD가 "테스트로 확인"을 요구하는데, **테스트 DB
 - [x] 서명이 다른 토큰이 `AUTH_005`로 판별됨 — `tamperedSignatureIsClassifiedAsAuth005`
   - 추가로 빈 토큰(`AUTH_003`)·형식 오류 토큰(`AUTH_003`)·클레임 추출(`userId`/`email`)도 함께 검증
 
-### Task 012: SecurityConfig·CorsConfig 및 인증 진입점 구성
+### Task 012: SecurityConfig·CorsConfig 및 인증 진입점 구성 ✅ 완료
 
 **영역**: BE | **선행**: Task 011
 
-- [ ] `config/SecurityConfig.java` — 필터체인 구성
+- [x] `config/SecurityConfig.java` — 필터체인 구성
   - ⚠️ **Spring Security 7(Boot 4 동봉)은 람다 DSL만 지원**한다. `authorizeRequests()`/`antMatchers()`는 제거되었으므로 `authorizeHttpRequests { requestMatchers(...) }`를 쓴다
   - 무상태 JWT API이므로 **`csrf(csrf -> csrf.disable())`을 명시**한다
   - 인증 예외 경로: `/api/auth/signup`, `/api/auth/login`, `/oauth2/**`, `/login/oauth2/**` — 그 외 전부 인증 필요 (PRD 10장)
-- [ ] `auth/jwt/JwtAuthenticationEntryPoint.java` — **필터 단계 401을 `ApiResponse` JSON으로 직접 직렬화**
+  - ⚠️ 실측(2026-08-31): `UsernamePasswordAuthenticationFilter`는 `org.springframework.security.authentication`이 아니라 **`org.springframework.security.web.authentication`** 패키지다
+- [x] `auth/jwt/JwtAuthenticationEntryPoint.java` — **필터 단계 401을 `ApiResponse` JSON으로 직접 직렬화**
   - ⚠️ 필터는 DispatcherServlet 바깥이라 `GlobalExceptionHandler`(`@RestControllerAdvice`)에 **도달하지 않는다**. 이게 없으면 "모든 응답은 `ApiResponse`로 감싼다"는 계약이 인증 실패에서만 깨진다 (API_SPEC 2.2 / PRD_VALIDATION Major #5)
-- [ ] **`config/CorsConfig.java` (PRD 2.1)** — ⚠️ 기존 로드맵에서 어느 마일스톤에도 없던 항목
+  - ⚠️ 실측(2026-08-31): Spring Boot 4의 자동구성 `ObjectMapper`는 `com.fasterxml.jackson`이 아니라 **`tools.jackson.databind.ObjectMapper`**(Jackson 3)다. `jjwt-jackson`이 런타임에 끌어오는 구버전 Jackson 2와 혼동하지 않도록 주의
+- [x] **`config/CorsConfig.java` (PRD 2.1)** — ⚠️ 기존 로드맵에서 어느 마일스톤에도 없던 항목
   - `allowedOrigins`: `${app.frontend-url}` (dev 기본 `http://localhost:3000`)
   - `allowedMethods`: `GET, POST, PUT, PATCH, DELETE, OPTIONS` — **`PATCH` 누락 시 상태 변경 API(TODO-05)만 조용히 실패**한다
   - `allowedHeaders`: `Authorization`, `Content-Type`
   - `allowCredentials`: **`false`** — 인증을 Bearer 헤더로 전달하므로 쿠키가 필요 없다. `true`로 두면 `allowedOrigins`에 와일드카드를 못 쓰는 제약만 늘어난다
   - `SecurityConfig`에서 `.cors(Customizer.withDefaults())`로 연결 (연결하지 않으면 설정이 무시된다)
   - 운영 도메인 갱신은 **M9(Task 039)** 에서 수행한다
-- [ ] `PasswordEncoder` 빈 — **BCrypt** (불변 규칙 3)
+- [x] `PasswordEncoder` 빈 — **BCrypt** (불변 규칙 3)
 
-**테스트 체크리스트 (Spring Boot Test + MockMvc)**
-- [ ] 토큰 없이 보호 API 호출 시 **401 + `ApiResponse` 포맷 + `AUTH_003`**
-- [ ] 만료 토큰 → `AUTH_004`, 위조 토큰 → `AUTH_005` (모두 `ApiResponse` 래핑)
-- [ ] `/api/auth/signup`, `/api/auth/login`은 토큰 없이 접근 가능
-- [ ] `Origin: http://localhost:3000`의 preflight(`OPTIONS`)가 `PATCH`를 허용 헤더에 포함해 응답
+**테스트 체크리스트 (Spring Boot Test + MockMvc)** — 실측(2026-08-31) `./mvnw test` `Tests run: 29, Failures: 0` / `BUILD SUCCESS`
+- [x] 토큰 없이 보호 API 호출 시 **401 + `ApiResponse` 포맷 + `AUTH_003`** — `SecurityConfigTest.protectedEndpointWithoutTokenReturns401WithAuth003`
+- [x] 만료 토큰 → `AUTH_004`, 위조 토큰 → `AUTH_005` (모두 `ApiResponse` 래핑) — `expiredTokenReturns401WithAuth004`/`tamperedTokenReturns401WithAuth005`
+- [x] `/api/auth/signup`, `/api/auth/login`은 토큰 없이 접근 가능 — `signupAndLoginBypassAuthenticationEvenWithoutAController`(컨트롤러가 아직 없어 404지만, 401이 아니라는 사실 자체가 permitAll 증거)
+- [x] `Origin: http://localhost:3000`의 preflight(`OPTIONS`)가 `PATCH`를 허용 헤더에 포함해 응답 — `preflightFromFrontendOriginAllowsPatch`
+
+**테스트 작성 중 실제로 드러난 버그 2건 (둘 다 수정 완료)**
+1. **`jwt.secret` 환경변수 우선순위**: Spring Boot는 OS 환경변수(`JWT_SECRET`)를 `application.properties`보다 우선한다(relaxed binding). 로컬 셸에 `JWT_SECRET`이 이미 설정돼 있어, 테스트에서 테스트 properties의 더미 시크릿을 문자열로 재하드코딩하면 실제 실행 중인 키와 달라져 서명 검증이 엉뚱하게 실패했다. → 만료 토큰 테스트는 리플렉션으로 실행 중인 빈의 진짜 키를 꺼내 서명하도록 수정
+2. **`GlobalExceptionHandler`의 `Exception.class` catch-all이 과했음**: 매핑되지 않은 경로에서 Spring이 던지는 `NoResourceFoundException`(정상 404)까지 가로채 무조건 `COMMON_500`(500)으로 응답하고 있었다. `NoResourceFoundException`/`ErrorResponseException`을 `ErrorResponse` 인터페이스로 먼저 잡아 원래 상태코드를 살리는 핸들러를 catch-all 앞에 추가해 해결
 
 ### Task 013: 이메일 회원가입·로그인·내 정보 API 구현
 
