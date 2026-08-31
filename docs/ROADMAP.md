@@ -336,7 +336,7 @@ M1 이후 모든 DoD가 "테스트로 확인"을 요구하는데, **테스트 DB
 
 ---
 
-## M2. 인증 (JWT) & CORS 🔐
+## M2. 인증 (JWT) & CORS 🔐 ✅ 완료(2026-08-31)
 
 **목표**: 이메일 회원가입·로그인, JWT 발급/검증 체계, **그리고 프론트 연동에 필요한 CORS 기반**을 완성한다.
 
@@ -387,33 +387,37 @@ M1 이후 모든 DoD가 "테스트로 확인"을 요구하는데, **테스트 DB
 1. **`jwt.secret` 환경변수 우선순위**: Spring Boot는 OS 환경변수(`JWT_SECRET`)를 `application.properties`보다 우선한다(relaxed binding). 로컬 셸에 `JWT_SECRET`이 이미 설정돼 있어, 테스트에서 테스트 properties의 더미 시크릿을 문자열로 재하드코딩하면 실제 실행 중인 키와 달라져 서명 검증이 엉뚱하게 실패했다. → 만료 토큰 테스트는 리플렉션으로 실행 중인 빈의 진짜 키를 꺼내 서명하도록 수정
 2. **`GlobalExceptionHandler`의 `Exception.class` catch-all이 과했음**: 매핑되지 않은 경로에서 Spring이 던지는 `NoResourceFoundException`(정상 404)까지 가로채 무조건 `COMMON_500`(500)으로 응답하고 있었다. `NoResourceFoundException`/`ErrorResponseException`을 `ErrorResponse` 인터페이스로 먼저 잡아 원래 상태코드를 살리는 핸들러를 catch-all 앞에 추가해 해결
 
-### Task 013: 이메일 회원가입·로그인·내 정보 API 구현
+### Task 013: 이메일 회원가입·로그인·내 정보 API 구현 ✅ 완료
 
 **영역**: BE | **선행**: Task 012
 
-- [ ] `auth/AuthController.java` + `auth/dto/`(`SignupRequest`, `LoginRequest`, `TokenResponse`, `UserResponse`)
-- [ ] `POST /api/auth/signup` (201) — **이메일 형식(`@Email`) + 중복 검증**, **비밀번호 `@Size(min=6)`**, BCrypt 저장
+- [x] `auth/AuthController.java` + `auth/dto/`(`SignupRequest`, `LoginRequest`, `TokenResponse`, `UserResponse`) — 실측(2026-08-31)
+  - `TokenResponse.user`는 `UserResponse`를 그대로 재사용한다(로그인 응답 예시엔 `createdAt`이 없지만, 별도 요약 DTO를 새로 만들기보다 필드 하나 더 실어 보내는 쪽을 택함 — 프론트가 안 쓰면 그만인 정보이고 계약 위반이 아님)
+- [x] `POST /api/auth/signup` (201) — **이메일 형식(`@Email`) + 중복 검증**, **비밀번호 `@Size(min=6)`**, BCrypt 저장
   - 불변 규칙 1·2: **username 필드를 만들지 않는다**, **6자 이상 외 복잡도 규칙을 추가하지 않는다**
   - 이메일 중복 → `409` + `AUTH_002`
-- [ ] `POST /api/auth/login` (200) — 자격 검증 후 `accessToken` + `expiresIn: 86400000` 반환
-  - ⚠️ **"이메일 없음"과 "비밀번호 불일치"를 구분하지 않고 모두 `AUTH_001`** — 가입 이메일 열거 방지 (API_SPEC 2.2)
-- [ ] `GET /api/auth/me` (200) — 인증 주체 정보 반환. `provider`는 **최초 가입 수단**을 뜻한다 (PRD 13.1)
-- [ ] `domain/user/UserService.java` — Controller에 비즈니스 로직을 두지 않는다 (CLAUDE.md 4장)
+- [x] `POST /api/auth/login` (200) — 자격 검증 후 `accessToken` + `expiresIn: 86400000` 반환
+  - ⚠️ **"이메일 없음"과 "비밀번호 불일치"를 구분하지 않고 모두 `AUTH_001`** — 가입 이메일 열거 방지 (API_SPEC 2.2). `findByEmail` + `filter(password 매치)` + `orElseThrow`로 한 번에 처리해 두 케이스가 코드 경로부터 갈라지지 않도록 구현
+- [x] `GET /api/auth/me` (200) — 인증 주체 정보 반환. `provider`는 **최초 가입 수단**을 뜻한다 (PRD 13.1) — `@AuthenticationPrincipal Long userId`로 JwtAuthenticationFilter가 심어둔 principal을 그대로 사용
+- [x] `domain/user/UserService.java` — Controller에 비즈니스 로직을 두지 않는다 (CLAUDE.md 4장)
 
-**테스트 체크리스트 (Spring Boot Test + MockMvc)**
-- [ ] 정상 회원가입 → **201**, DB의 `password`가 **BCrypt 해시**(평문 아님)
-- [ ] 잘못된 이메일 형식 / 5자 비밀번호 → **400 + `COMMON_001`**, `data`에 필드 에러 맵
-- [ ] 중복 이메일 → **409 + `AUTH_002`**
-- [ ] 로그인 성공 → 토큰 발급 · 그 토큰으로 `GET /api/auth/me` **200**
-- [ ] 없는 이메일 / 틀린 비밀번호 → **둘 다 401 + `AUTH_001`** (응답이 서로 구별되지 않음)
+**테스트 체크리스트 (Spring Boot Test + MockMvc)** — 실측(2026-08-31) `./mvnw test` `Tests run: 34, Failures: 0` / `BUILD SUCCESS`
+- [x] 정상 회원가입 → **201**, DB의 `password`가 **BCrypt 해시**(평문 아님) — `signupSucceedsAndStoresBcryptHashedPassword`
+- [x] 잘못된 이메일 형식 / 5자 비밀번호 → **400 + `COMMON_001`**, `data`에 필드 에러 맵 — `signupWithInvalidEmailAndShortPasswordReturns400WithFieldErrorMap`
+- [x] 중복 이메일 → **409 + `AUTH_002`** — `signupWithDuplicateEmailReturns409WithAuth002`
+- [x] 로그인 성공 → 토큰 발급 · 그 토큰으로 `GET /api/auth/me` **200** — `loginSucceedsAndTokenGrantsAccessToMe`
+- [x] 없는 이메일 / 틀린 비밀번호 → **둘 다 401 + `AUTH_001`** (응답이 서로 구별되지 않음) — `loginWithUnknownEmailAndWrongPasswordBothReturn401WithAuth001`
+
+**테스트 작성 중 추가로 드러난 문제 (Task 012 수정을 한 번 더 보강)**
+Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나열해 고쳤던 `GlobalExceptionHandler`가, 이번에 signup/login 컨트롤러가 실제로 생기자 `HttpRequestMethodNotSupportedException`(405, GET으로 POST 전용 경로 호출)에는 여전히 안 걸려 500으로 새는 걸 확인했다. 예외를 하나씩 나열하는 방식 자체가 구조적으로 이런 누락을 반복할 수밖에 없다고 판단해, `GlobalExceptionHandler`가 Spring의 **`ResponseEntityExceptionHandler`를 상속**하도록 다시 설계했다 — Spring MVC가 자체적으로 던지는 표준 예외는 전부 `handleExceptionInternal` 한 곳으로 모이므로, 이 메서드 하나만 오버라이드하면 개별 나열 없이 원래 상태코드를 보존한 채 `ApiResponse`로 감쌀 수 있다. `SecurityConfigTest`의 관련 검증도 405 기준으로 갱신.
 
 **DoD**
-- [ ] 잘못된 이메일/6자 미만 비밀번호가 거부됨
-- [ ] 로그인 시 24h 만료 토큰 발급, 보호 API 접근 가능
-- [ ] 만료/위조 토큰이 거부됨
-- [ ] **인증 실패(401) 응답도 `ApiResponse` 포맷이며 `AUTH_003`/`AUTH_004`/`AUTH_005` 에러코드를 담는다** (API_SPEC 2.2)
-- [ ] **CORS 설정이 존재하고 `http://localhost:3000` preflight가 `PATCH` 포함으로 통과한다**
-- [ ] API_SPEC 3.1~3.3의 요청/응답 바디와 실제 응답이 일치함
+- [x] 잘못된 이메일/6자 미만 비밀번호가 거부됨
+- [x] 로그인 시 24h 만료 토큰 발급, 보호 API 접근 가능
+- [x] 만료/위조 토큰이 거부됨 (Task 012)
+- [x] **인증 실패(401) 응답도 `ApiResponse` 포맷이며 `AUTH_003`/`AUTH_004`/`AUTH_005` 에러코드를 담는다** (API_SPEC 2.2, Task 012)
+- [x] **CORS 설정이 존재하고 `http://localhost:3000` preflight가 `PATCH` 포함으로 통과한다** (Task 012)
+- [x] API_SPEC 3.1~3.3의 요청/응답 바디와 실제 응답이 일치함
 
 **의존성**: M1
 
