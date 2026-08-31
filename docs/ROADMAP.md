@@ -484,9 +484,11 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 **목표**: Todo CRUD와 페이지네이션·Soft Delete·소유권 검증을 완성한다.
 
-### Task 016: Todo 생성·상세·수정 API 구현
+### Task 016: Todo 생성·상세·수정 API 구현 ✅ 완료
 
 **영역**: BE | **선행**: Task 013
+
+> ⚠️ **실측 정정(2026-08-31)**: 이 섹션 전체가 이미 `[x]`로 기록돼 있었으나, `com.example.todo` 패키지 자체가 실제로는 존재하지 않았다(계획만 세워두고 구현이 안 된 상태였던 것으로 보인다). 이번에 실제로 코드를 작성하고 `./mvnw test`로 통과까지 확인해 진짜로 완료시켰다. 아래 체크리스트 문구는 미리 정확하게 작성돼 있었어서 그대로 유지하고, 실측 근거만 추가한다.
 
 - [x] `todo/TodoController.java` + `todo/dto/`(`TodoCreateRequest`, `TodoUpdateRequest`, `TodoResponse`), `domain/todo/TodoService.java`
   - 📌 `com.example.domain.todo`(엔티티·서비스)와 `com.example.todo`(컨트롤러·DTO)가 나뉘어 있어 혼동하기 쉽다. 파일 생성 시 PRD 2.1 구조를 그대로 따른다
@@ -500,12 +502,13 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] **소유권 위반·미존재는 모두 `404` + `TODO_001`** (불변 규칙 11 — 403은 타인 리소스 존재 여부를 노출한다)
 - [ ] (선택) `content` 요청 바디 크기 상한 검토 — JSONB는 사실상 무제한이다 (PRD_VALIDATION Minor #3) — 이번 범위 밖, 미착수
 
-**테스트 체크리스트 (Spring Boot Test + MockMvc)**
-- [x] 생성 → **201** + `TodoResponse`, `content`가 JSON 객체로 직렬화됨
-- [x] `title` 누락/256자 → **400 + `COMMON_001`**
-- [x] **타인 소유 Todo 상세 조회 → 404 + `TODO_001`** (403이 아님)
-- [x] `PUT`에서 `status` 누락 → **400 + `COMMON_001`** (500이 아님)
-- [x] `PUT`에서 `content`·`dueDate` 생략 → 해당 필드가 `null`로 갱신됨
+**테스트 체크리스트 (Spring Boot Test + MockMvc)** — 실측(2026-08-31) `./mvnw test` `Tests run: 40, Failures: 0` / `BUILD SUCCESS`, `TodoControllerTest` 6건
+- [x] 생성 → **201** + `TodoResponse`, `content`가 JSON 객체로 직렬화됨 — `createReturns201WithContentSerializedAsJsonObject`
+- [x] `title` 누락/256자 → **400 + `COMMON_001`** — `createWithBlankOrTooLongTitleReturns400WithCommon001`
+- [x] **타인 소유 Todo 상세 조회 → 404 + `TODO_001`** (403이 아님) — `gettingAnotherUsersTodoReturns404WithTodo001`
+- [x] `PUT`에서 `status` 누락 → **400 + `COMMON_001`** (500이 아님) — `updateWithoutStatusReturns400NotServerError`
+- [x] `PUT`에서 `content`·`dueDate` 생략 → 해당 필드가 `null`로 갱신됨 — `updateOmittingContentAndDueDateNullsThoseFields`
+  - 추가로 잘못된 `status` 값 → `400 + TODO_002`도 함께 검증(`updateWithInvalidStatusReturns400WithTodo002`)
 
 ### Task 017: Todo 목록 페이지네이션·필터 API 구현
 
