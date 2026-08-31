@@ -462,8 +462,9 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 > ⚠️ 이 Task의 DoD 중 "실제 Google/Kakao 로그인 성공"은 **진짜 OAuth2 앱 등록(클라이언트 ID/시크릿)과 브라우저 수동 조작이 필요**해 에이전트가 완결할 수 없다. 자동화 가능한 부분(코드·핸들러·형식 검증)은 전부 구현·테스트했고, 실 기동으로 `authorization_request_not_found`가 나지 않음도 확인했다.
 
 - [x] ⚠️ **OAuth2 인가 요청 저장소 정책** — JWT는 무상태(`STATELESS`)지만 Spring Security의 OAuth2 로그인은 기본적으로 **HttpSession에 state/PKCE를 보관**한다. 전역 `SessionCreationPolicy.STATELESS`를 그대로 두면 콜백에서 **`authorization_request_not_found`** 가 발생한다 (PRD 10장 / PRD_VALIDATION Major #6)
-  - **쿠키 기반 `AuthorizationRequestRepository`를 구현**했다 — `CookieOAuth2AuthorizationRequestRepository`, `HttpOnly` + `SameSite=Lax` + 만료 180초
-  - 실측(2026-08-31): `dev` 프로파일로 실기동해 `GET /oauth2/authorization/kakao`가 302로 실제 카카오 인증 URL로 리다이렉트하며 `Set-Cookie: oauth2_auth_request=...; HttpOnly; SameSite=Lax`를 실어 보내는 것을 직접 확인 — 세션 없이도 인가 요청이 정상 보관됨
+  - **쿠키 기반 `AuthorizationRequestRepository`를 구현**했다 — `CookieOAuth2AuthorizationRequestRepository`, `HttpOnly` + `Secure` + `SameSite=Lax` + 만료 180초
+  - 실측(2026-08-31): `dev` 프로파일로 실기동해 `GET /oauth2/authorization/kakao`가 302로 실제 카카오 인증 URL로 리다이렉트하며 `Set-Cookie: oauth2_auth_request=...; Secure; HttpOnly; SameSite=Lax`를 실어 보내는 것을 직접 확인 — 세션 없이도 인가 요청이 정상 보관됨
+  - 🔧 **마무리(2026-08-31, 사용자 요청 재검토)로 보강**: 처음 구현에는 `Secure` 속성이 빠져 있었다(체크리스트에 명시되진 않았지만 운영은 HTTPS이므로 보안 모범 사례로 추가). `localhost`는 최신 브라우저가 secure context 예외로 취급해 로컬 개발에는 지장이 없다. 회귀 테스트 추가 후 실기동으로 헤더에 `Secure`가 실제로 붙는 것까지 재확인함
 - [x] `auth/oauth2/OAuth2SuccessHandler.java` — JWT 발급 후 프론트로 리다이렉트
 - [x] **토큰은 URL 프래그먼트로 전달**: `{APP_FRONTEND_URL}/oauth2/callback#token={accessToken}` (불변 규칙 12 / API_SPEC 3.5)
   - ❌ 쿼리스트링 금지 — `Referer` 헤더·브라우저 히스토리·프록시/CDN 액세스 로그에 24시간 유효 토큰이 남는다
@@ -471,7 +472,7 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] Google/Kakao 프로바이더 설정 확인 — ⚠️ 실측 정정: "이미 반영됨"이라 적혀 있었으나 **Google 등록 블록 자체가 없었다**(Kakao만 Task 002에서 반영됨). 이번에 Google `registration` 블록을 추가(더미 client-id/secret 폴백, `scope=email,profile`)
 - [ ] 개발자 콘솔에 Redirect URI 등록: `http://localhost:8080/login/oauth2/code/{google|kakao}` — **차단됨(사용자 작업)**: 실제 Google Cloud Console·Kakao Developers 계정이 필요하다
 
-**테스트 체크리스트 (Spring Boot Test + 수동 검증)** — 실측(2026-08-31) `./mvnw test` `Tests run: 69, Failures: 0` / `BUILD SUCCESS`
+**테스트 체크리스트 (Spring Boot Test + 수동 검증)** — 실측(2026-08-31) `./mvnw test` `Tests run: 70, Failures: 0` / `BUILD SUCCESS`
 - [x] (자동) `OAuth2SuccessHandler`가 만드는 리다이렉트 URL이 **`#token=`(프래그먼트) 형식**이며 쿼리스트링에 토큰이 없음 — `OAuth2SuccessHandlerTest`(2건, 트레일링 슬래시 케이스 포함)
 - [x] (자동) 실패 경로가 `#error=AUTH_007`을 생성 — `OAuth2FailureHandlerTest`(2건, OAuth2 예외/비-OAuth2 예외 둘 다)
 - [x] (자동) 발급된 토큰으로 보호 API 접근 성공 — `OAuth2SuccessHandlerTest`에서 발급된 토큰을 `JwtTokenProvider`로 직접 검증(`getUserId`/`getEmail` 일치 확인). 인가 요청 쿠키 왕복은 `CookieOAuth2AuthorizationRequestRepositoryTest`(3건)로 별도 검증
