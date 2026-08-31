@@ -117,7 +117,7 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 | **`JAVA_HOME`** | ✅ 실측(2026-08-28) `C:\SpringBootProject\zulu21`로 확인, 새 셸 `java -version`/`./mvnw -v` 모두 21 보고 |
 | 루트 `README.md` | ❌ 없음 |
 | PostgreSQL `TodoListDB` 스키마 물리명 확인 | ✅ 실측(2026-08-28) `\dn`으로 `todolistdb`(소문자) 확인 |
-| 백엔드 도메인 코드 | ❌ 없음 (`TodoBackendApplication`, `TodoBackendApplicationTests`만 존재) |
+| 백엔드 도메인 코드 | ✅ 실측(2026-08-31) `User`/`Todo` 엔티티·Repository 구현 완료 (Task 009). Controller/Service·인증·CORS는 아직 없음(M2~M4 예정) |
 | 프론트 라이브러리 (React Query·Framer Motion·RHF·Zod·Tiptap) | ❌ 미설치 |
 | **프론트 테스트 도구** | ❌ **전부 미설치** (Playwright는 M5 Task 023) |
 | Docker | ❌ 미설치 — **설치하지 않기로 확정.** 테스트는 로컬 `todolistdb_test` 스키마 사용 |
@@ -283,28 +283,27 @@ M1 이후 모든 DoD가 "테스트로 확인"을 요구하는데, **테스트 DB
 - [x] `delete()` 호출 후 물리 행이 남아 있고 `deleted_at`이 채워진다 — `JdbcTemplate` 네이티브 쿼리로 직접 확인
 - [x] **부가 발견 — PRD_VALIDATION의 미확정 가정 해소**: `@SQLRestriction`이 `EntityManager.find()`(ID 직접 로드)에도 적용됨을 확인했다. 삭제 후 `find()`가 `null`을 반환했고, SELECT 로그에 `deleted_at IS NULL` 조건이 자동으로 붙는 것을 확인했다. 다만 PRD 8.3 권고대로 실제 도메인 엔티티는 소유권 검증까지 겸하는 `findByIdAndUser_IdAndDeletedAtIsNull(...)` 파생 쿼리를 계속 사용한다
 
-### Task 009: User·Todo 엔티티 및 Repository 구현
+### Task 009: User·Todo 엔티티 및 Repository 구현 ✅ 완료
 
 **영역**: BE | **선행**: Task 008
 
-- [ ] `domain/user/`: `User`(BIGINT PK, `email` UNIQUE NOT NULL, `password` NULL 허용, `name`, `provider`, `providerId`), `AuthProvider` enum(LOCAL/GOOGLE/KAKAO), `UserRepository`
-- [ ] `domain/todo/`: `Todo`(BIGINT PK, `user_id` FK NOT NULL, `title` VARCHAR(255) NOT NULL, `content` JSONB, `status`, `dueDate`), `TodoStatus` enum(TODO/DONE), `TodoRepository`
-- [ ] **`Todo.content` JSONB 매핑** — `String` 필드 + `@JdbcTypeCode(SqlTypes.JSON)` + `@Column(columnDefinition = "jsonb")` (PRD 8.4)
-- [ ] **연관관계는 `LAZY` 명시** — `@ManyToOne(fetch = FetchType.LAZY)`. JPA 기본값이 EAGER라 그대로 두면 목록 조회에서 N+1이 발생한다 (PRD_VALIDATION Minor #10)
-- [ ] 인덱스: `(user_id, deleted_at)`, `(user_id, status, deleted_at)` (PRD 8.2)
-  - 기본 정렬이 `created_at DESC`이므로 `(user_id, deleted_at, created_at DESC)` 형태도 함께 검토 (PRD_VALIDATION Minor #15)
-- [ ] 단건 조회용 파생 쿼리 선언: `findByIdAndUser_IdAndDeletedAtIsNull(...)` — 소유권 검증과 Soft Delete 필터를 한 번에 처리 (PRD 8.3)
+- [x] `domain/user/`: `User`(BIGINT PK, `email` UNIQUE NOT NULL, `password` NULL 허용, `name`, `provider`, `providerId`), `AuthProvider` enum(LOCAL/GOOGLE/KAKAO), `UserRepository` — 실측(2026-08-31) `User.java`/`AuthProvider.java`/`UserRepository.java` 작성. Task 008 패턴대로 `@SQLDelete`+`@SQLRestriction`도 함께 적용
+- [x] `domain/todo/`: `Todo`(BIGINT PK, `user_id` FK NOT NULL, `title` VARCHAR(255) NOT NULL, `content` JSONB, `status`, `dueDate`), `TodoStatus` enum(TODO/DONE), `TodoRepository` — 실측(2026-08-31) `Todo.java`/`TodoStatus.java`/`TodoRepository.java` 작성
+- [x] **`Todo.content` JSONB 매핑** — `String` 필드 + `@JdbcTypeCode(SqlTypes.JSON)` + `@Column(columnDefinition = "jsonb")` (PRD 8.4) — 실측: 별도 FormatMapper 없이 기동·왕복 성공(아래 테스트 참조)
+- [x] **연관관계는 `LAZY` 명시** — `@ManyToOne(fetch = FetchType.LAZY)`. JPA 기본값이 EAGER라 그대로 두면 목록 조회에서 N+1이 발생한다 (PRD_VALIDATION Minor #10)
+- [x] 인덱스: `(user_id, deleted_at)`, `(user_id, status, deleted_at)` (PRD 8.2) — `@Table(indexes = ...)`로 반영
+  - ⚠️ `(user_id, deleted_at, created_at DESC)` 3컬럼 복합 인덱스(PRD_VALIDATION Minor #15)는 **아직 추가하지 않음** — 페이지네이션 정렬·필터 조합이 확정되는 Task 017에서 실제 쿼리 패턴을 보고 재검토
+- [x] 단건 조회용 파생 쿼리 선언: `findByIdAndUser_IdAndDeletedAtIsNull(...)` — 소유권 검증과 Soft Delete 필터를 한 번에 처리 (PRD 8.3)
 
-**테스트 체크리스트 (JUnit 5 + Spring Boot Test)** — *PRD 13.3의 미해결 가정 2건을 여기서 확정한다*
-- [ ] **`Todo` 엔티티 포함 상태에서 애플리케이션이 기동된다** — Jackson 3 × Hibernate FormatMapper 문제 실측 (PRD 8.4 / PRD_VALIDATION Critical #2)
-  - 실패 시: `spring.jpa.properties.hibernate.type.json_format_mapper`에 `tools.jackson` 기반 매퍼를 직접 구현해 등록한다 (`application.properties`에 주석 자리 마련됨)
-- [ ] **Tiptap JSON이 손실 없이 저장·조회 왕복된다** (`{"type":"doc","content":[...]}` 원문 비교)
-- [ ] **Soft Delete 3경로 모두 확인** (PRD 8.3 — `@SQLRestriction` 사각지대 검증)
-  - [ ] 단건 조회(`findById` 계열) 경로에서 삭제분이 조회되지 않음
-  - [ ] count 쿼리 — `totalElements`에 삭제분이 포함되지 않음
-  - [ ] `keyword` 검색 경로에서 삭제분이 노출되지 않음
-- [ ] `users.email` UNIQUE 제약 위반이 예외로 드러남
-- [ ] 생성된 DDL이 `todolistdb` 스키마에 올라감 (스키마 폴딩 정합성)
+**테스트 체크리스트 (JUnit 5 + Spring Boot Test)** — *PRD 13.3의 미해결 가정 2건을 여기서 확정한다* — 실측(2026-08-31) `./mvnw test` `Tests run: 14, Failures: 0` / `BUILD SUCCESS`
+- [x] **`Todo` 엔티티 포함 상태에서 애플리케이션이 기동된다** — Jackson 3 × Hibernate FormatMapper 문제 실측 (PRD 8.4 / PRD_VALIDATION Critical #2) → **문제 없이 기동됨.** `json_format_mapper` 수동 등록 불필요로 결론
+- [x] **Tiptap JSON이 손실 없이 저장·조회 왕복된다** — `TodoRepositoryTest.tiptapJsonRoundTripsWithoutLoss`
+- [x] **Soft Delete 3경로 모두 확인** (PRD 8.3 — `@SQLRestriction` 사각지대 검증)
+  - [x] 단건 조회(`findById` 계열) 경로에서 삭제분이 조회되지 않음 — `findByIdAndUserExcludesDeletedTodo`
+  - [x] count 쿼리 — 삭제분이 포함되지 않음 — `countQueryExcludesDeletedTodo`(`countByUser_Id`)
+  - [x] `keyword` 검색 경로에서 삭제분이 노출되지 않음 — `keywordSearchExcludesDeletedTodo`(`findByUser_IdAndTitleContainingIgnoreCase`)
+- [x] `users.email` UNIQUE 제약 위반이 예외로 드러남 — `UserRepositoryTest.duplicateEmailViolatesUniqueConstraint`(`DataIntegrityViolationException`)
+- [x] 생성된 DDL이 `todolistdb` 스키마에 올라감 (스키마 폴딩 정합성) — `todosTableIsCreatedInTestSchema`로 확인(테스트 환경 기준 `todolistdb_test`, dev는 Hikari 로그의 `Default catalog/schema`로 기존에 확인된 패턴과 동일)
 
 ### Task 010: 공통 응답·예외 처리 기반 구축
 
