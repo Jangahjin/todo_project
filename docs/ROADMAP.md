@@ -442,12 +442,18 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] **이메일 미제공 케이스 처리 정책 확정** — 부재 시 `AUTH_007`로 실패 처리 (콘솔의 필수 동의 설정은 실제 Kakao 앱에서 사용자가 별도로 확인해야 함)
   - 🐛 **실측(2026-08-31) 발견한 함정**: Google은 기본적으로 OIDC(scope에 `openid` 포함)라서, `.oidcUserService()`가 아니라 `.userInfoEndpoint().userService(...)`로 등록한 `CustomOAuth2UserService`는 **아예 호출되지 않는다**(Spring Security가 OIDC 발급자를 감지하면 별도 경로로 라우팅). `application.properties`의 Google `scope`에서 `openid`를 빼(`email,profile`) Kakao와 같은 일반 OAuth2Login 경로로 통일해 해결
 
-**테스트 체크리스트 (JUnit 5)** — 실측(2026-08-31) `OAuth2UserInfoTest`(4건)·`CustomOAuth2UserServiceTest`(4건)
+**테스트 체크리스트 (JUnit 5)** — 실측(2026-08-31) `OAuth2UserInfoTest`(5건)·`CustomOAuth2UserServiceTest`(4건)
 - [x] Google 응답 샘플 → `email`/`name`/`providerId` 정확 추출 — `googleUserInfoExtractsStandardFields`
 - [x] **Kakao 중첩 응답 샘플** → `kakao_account.email`, `kakao_account.profile.nickname` 정확 추출 — `kakaoUserInfoExtractsNestedFields`
 - [x] 이메일 없는 Kakao 응답 → 확정한 정책대로 동작(예외 또는 대체값) — `kakaoResponseWithoutEmailThrowsAuth007`
 - [x] 신규 이메일 → 자동 가입, `provider`가 `GOOGLE`/`KAKAO`, `password`가 `NULL` — `newGoogleUserIsAutoSignedUpWithNullPassword`
 - [x] **기존 LOCAL 계정과 같은 이메일 → `provider`가 `LOCAL`로 유지되고 덮어써지지 않음** — `existingLocalAccountKeepsLocalProviderWhenLinkingSocialLogin`
+
+**재검토(2026-08-31, 사용자 요청)로 추가 발견·수정한 것 2건**
+1. 🐛 `resolveUser()`의 `@Transactional`이 **자기 자신 호출(self-invocation)에서 무시되는 Spring의 잘 알려진 함정**에 걸려 있었다. `loadUser()`가 `this.resolveUser(...)`로 호출하는데, 이는 프록시를 거치지 않아 애노테이션이 조용히 아무 효과가 없었다. 실제 동작은 깨지지 않는다(`findByEmail`/`save`는 `SimpleJpaRepository`가 메서드 단위로 이미 트랜잭션 처리) — 그래도 "트랜잭션으로 묶여 있다"는 착각을 주는 죽은 애노테이션이라 제거했다.
+2. 🐛 `KakaoOAuth2UserInfo.getProviderId()`가 `String.valueOf(attributes.get("id"))`를 썼는데, `id`가 없으면 `String.valueOf(null)`이 실제 `null`이 아니라 **문자열 `"null"`**을 반환한다. `id == null` 분기를 추가해 진짜 `null`을 돌려주도록 고치고 회귀 테스트(`kakaoUserInfoWithoutIdReturnsActualNullNotTheStringNull`)를 추가했다.
+
+실측(2026-08-31) `./mvnw test` `Tests run: 70, Failures: 0` / `BUILD SUCCESS`로 두 수정 모두 확인.
 
 ### Task 015: OAuth2 인가 요청 저장소·성공 핸들러 구현 ⚠️ 자동화 가능 범위 완료 — 실제 제공자 수동 검증은 대기
 
