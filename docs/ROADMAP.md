@@ -106,7 +106,7 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 |------|------|
 | `todo-backend` 골격 (Spring Boot 4.1.0 / JDK 21 / pom 의존성) | ✅ 완료 |
 | `todo-frontend` 골격 (Next.js 16.3.1 / React 19.2.8 / Tailwind 4 / shadcn) | ✅ 완료 |
-| `application.properties` 3파일 분리 + 전 시크릿 `${ENV}` 처리 | ✅ 완료 |
+| `application.properties` 3파일 분리 + 전 시크릿 `${ENV}` 처리 | ✅ 실측(2026-08-31) 완료 (Task 002) — 이 표에 미리 ✅로 적혀 있었으나 실제로는 2026-08-31에야 완료됨 |
 | Kakao OAuth2 `provider`/`registration` 블록 | ✅ 완료 |
 | `src/test/resources/application.properties` (테스트 전용 격리 설정) | ✅ 완료 — 실측(2026-08-28) 작성 및 `./mvnw clean test` 통과 확인 |
 | 루트 `.gitignore` | ✅ 완료 |
@@ -118,7 +118,7 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 | 루트 `README.md` | ❌ 없음 |
 | PostgreSQL `TodoListDB` 스키마 물리명 확인 | ✅ 실측(2026-08-28) `\dn`으로 `todolistdb`(소문자) 확인 |
 | 백엔드 도메인 코드 | ✅ 실측(2026-08-31) `User`/`Todo` 엔티티·Repository 구현 완료 (Task 009). Controller/Service·인증·CORS는 아직 없음(M2~M4 예정) |
-| 프론트 라이브러리 (React Query·Framer Motion·RHF·Zod·Tiptap) | ❌ 미설치 |
+| 프론트 라이브러리 (React Query·motion·RHF·Zod) | ✅ 실측(2026-08-31) 설치 완료 (Task 019). Tiptap만 계획대로 M7 미설치 |
 | **프론트 테스트 도구** | ❌ **전부 미설치** (Playwright는 M5 Task 023) |
 | Docker | ❌ 미설치 — **설치하지 않기로 확정.** 테스트는 로컬 `todolistdb_test` 스키마 사용 |
 | 테스트 스키마 분리 설정 | ✅ 완료 — 실측(2026-08-28) Hikari 로그에 `Default catalog/schema: postgres/todolistdb_test` 확인 |
@@ -141,14 +141,18 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
   - React Query·Framer Motion·React Hook Form·Zod는 **M5**, Tiptap은 **M7**에서 설치한다 (PRD 1.3 설치 상태 표)
 - [x] 루트 `.gitignore` — 시크릿·빌드 산출물·IDE·로그 규칙 포함
 
-### Task 002: 백엔드 설정 파일 분리 및 시크릿 환경변수화 ⚠️ 부분 완료
+### Task 002: 백엔드 설정 파일 분리 및 시크릿 환경변수화 ✅ 완료
 
 **영역**: BE
 
-> ⚠️ **실측 정정(2026-08-28)**: 이 섹션 전체가 완료(`[x]`)로 기록돼 있었으나 확인 결과 프로파일 3분할과 전체 시크릿 환경변수화는 되어 있지 않았다. Kakao OAuth2 설정만 이번에 실제로 구현·검증했다. 나머지 두 항목은 M2(Security/JWT) 착수 시 함께 처리한다.
+> ⚠️ **실측 정정(2026-08-28)**: 이 섹션 전체가 완료(`[x]`)로 기록돼 있었으나 확인 결과 프로파일 3분할과 전체 시크릿 환경변수화는 되어 있지 않았다. Kakao OAuth2 설정만 그때 실제로 구현·검증했다.
+> ✅ **실측 완료(2026-08-31)**: 남은 두 항목(프로파일 3분할, `DB_URL`/`DB_USERNAME` env화)을 마저 구현했다. `JWT_SECRET`은 이미 Task 011에서 반영돼 있었다.
 
-- [ ] `application.properties`(공통) / `application-dev.properties`(update) / `application-prod.properties`(validate) 3분할 — 실측: 아직 `application.properties` 1개뿐, 프로파일 분리 안 됨(`ddl-auto`가 공통 파일에 하드코딩돼 있어 지금은 dev/prod 구분이 없음)
-- [ ] 전 시크릿을 `${ENV}` 플레이스홀더로 치환 — 실측: `DB_PASSWORD`·`OAUTH_KAKAO_CLIENT_ID`·`OAUTH_KAKAO_CLIENT_SECRET`만 env화됨. `DB_URL`·`DB_USERNAME`은 아직 하드코딩(`localhost:5432/postgres`, `postgres`)이고 `JWT_SECRET`은 이를 쓰는 코드 자체가 없음(M2 예정)
+- [x] `application.properties`(공통) / `application-dev.properties`(`ddl-auto=update`) / `application-prod.properties`(`ddl-auto=validate`) 3분할 — 실측(2026-08-31): `ddl-auto`와 `app.frontend-url`을 프로파일 파일로 이동, 나머지(JWT·Kakao·datasource 자격)는 공통 유지
+  - `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`로 실제 기동 확인 — `Started TodoBackendApplication`, `Default catalog/schema: postgres/todolistdb`, 보호 API(`/api/auth/me`) 401 정상 응답
+  - `-Dspring-boot.run.profiles=prod`도 (`APP_FRONTEND_URL` 임시 지정 후) 정상 기동 — `ddl-auto=validate`가 기존 스키마와 충돌 없이 통과해 엔티티-스키마 정합성도 간접 확인됨
+  - `APP_FRONTEND_URL` 없이 `prod` 프로파일로 기동하면 **의도대로 즉시 실패**함을 확인 (`Could not resolve placeholder 'APP_FRONTEND_URL'`) — 운영 도메인 누락을 기동 시점에 강제로 잡아낸다
+- [x] 전 시크릿을 `${ENV}` 플레이스홀더로 치환 — 실측(2026-08-31): `DB_URL`/`DB_USERNAME`도 `${DB_URL:...}`/`${DB_USERNAME:postgres}`로 전환(비민감 값이라 로컬 기본값 허용). `JWT_SECRET`은 Task 011에서 이미 `${JWT_SECRET}`(기본값 없음)으로 반영돼 있었음. 진짜 시크릿(`DB_PASSWORD`, `JWT_SECRET`)은 여전히 기본값 없음
 - [x] Kakao OAuth2 `provider` 블록 + `registration`의 무기본값 항목 5종 등록 (PRD 12.2) — 실측(2026-08-28) main·test properties에 반영 완료, `./mvnw clean test` `Tests run: 6, Failures: 0` / `BUILD SUCCESS`로 정상 기동 확인
   - `OAUTH_KAKAO_CLIENT_ID`/`SECRET`은 `${ENV:더미값}` 폴백을 둬서 실제 Kakao 앱 등록 전(M3)에도 기동 가능하게 함
   - 누락 시 **M3가 아니라 기동 시점에** `Provider ID must be specified` / `authorizationGrantType cannot be null`로 실패한다 — PRD의 이 경고를 그대로 신뢰하고 두 블록을 한 번에 채웠다
