@@ -510,27 +510,28 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] `PUT`에서 `content`·`dueDate` 생략 → 해당 필드가 `null`로 갱신됨 — `updateOmittingContentAndDueDateNullsThoseFields`
   - 추가로 잘못된 `status` 값 → `400 + TODO_002`도 함께 검증(`updateWithInvalidStatusReturns400WithTodo002`)
 
-### Task 017: Todo 목록 페이지네이션·필터 API 구현
+### Task 017: Todo 목록 페이지네이션·필터 API 구현 ✅ 완료
 
 **영역**: BE | **선행**: Task 016
 
-- [ ] `GET /api/todos?page=&size=&status=&keyword=` — Spring Data `Pageable` 사용 후 **`PageResponse<TodoResponse>`로 변환**해 반환 (불변 규칙 6)
-- [ ] 기본 `page=0`, `size=10`, **최대 `size=100` — 초과 시 100으로 절삭** (PRD 4.4)
-- [ ] 기본 정렬 **`created_at DESC` 고정** (MVP에는 정렬 선택 UI가 없다)
-- [ ] `status` 필터(`TODO`/`DONE`, 미지정 시 전체) — 잘못된 값은 `400` + `COMMON_002`
-- [ ] `keyword` — **`title` 대상 부분 일치, 대소문자 무시** (`LOWER(title) LIKE`). 본문(JSONB) 검색은 MVP 제외
-  - ⚠️ **네이티브 쿼리를 쓰지 않는다.** `@SQLRestriction`이 적용되지 않아 삭제분이 노출된다 (PRD 8.3)
+- [x] `GET /api/todos?page=&size=&status=&keyword=` — Spring Data `Pageable` 사용 후 **`PageResponse<TodoResponse>`로 변환**해 반환 (불변 규칙 6)
+- [x] 기본 `page=0`, `size=10`, **최대 `size=100` — 초과 시 100으로 절삭** (PRD 4.4)
+- [x] 기본 정렬 **`created_at DESC` 고정** (MVP에는 정렬 선택 UI가 없다) — 클라이언트 정렬 파라미터 자체를 받지 않고 서비스가 `Sort`를 고정 생성
+- [x] `status` 필터(`TODO`/`DONE`, 미지정 시 전체) — 잘못된 값은 `400` + `COMMON_002`
+- [x] `keyword` — **`title` 대상 부분 일치, 대소문자 무시** (`LOWER(title) LIKE`). 본문(JSONB) 검색은 MVP 제외
+  - ⚠️ **네이티브 쿼리를 쓰지 않는다.** `@SQLRestriction`이 적용되지 않아 삭제분이 노출된다 (PRD 8.3) — JPQL `@Query`로 구현해 이 규칙을 지켰다
   - 📌 선행 와일드카드라 B-tree 인덱스를 타지 못한다. `user_id` 선필터로 충분하며 `pg_trgm`+GIN은 **MVP 범위 외**
-- [ ] 결과가 없어도 **404가 아니라** `content: []`, `totalElements: 0` (API_SPEC 4.2)
+  - 🐛 **실측(2026-08-31) 발견한 버그**: `LOWER(CONCAT('%', :keyword, '%'))`처럼 SQL의 `CONCAT`/`||` 안에 `null`이 될 수 있는 파라미터를 그대로 넘기면, PostgreSQL이 그 파라미터의 타입을 `bytea`로 잘못 추론해 `함수 lower(bytea)가 없음` 오류로 500이 났다(`IS NULL OR ...`로 논리적으로 단락시켜도 SQL은 실행 전에 전체 표현식의 타입을 정적으로 확정하므로 소용없었다). `%` 와일드카드를 **Java 쪽에서 미리 조합**해 SQL에는 `LOWER(t.title) LIKE :keywordPattern` 형태의 단순 비교만 남기는 방식으로 해결
+- [x] 결과가 없어도 **404가 아니라** `content: []`, `totalElements: 0` (API_SPEC 4.2)
 
-**테스트 체크리스트 (Spring Boot Test + MockMvc)**
-- [ ] 25건 생성 후 `size=10` → `totalElements=25`, `totalPages=3`, `page=0`에서 `hasNext=true`, `page=2`에서 `hasNext=false`
-- [ ] **`size=200` 요청이 100으로 절삭됨**
-- [ ] **타인 Todo가 목록에 섞이지 않음**
-- [ ] `keyword=JANG` 이 `장보기`가 아닌 `jangbogi`류 제목을 **대소문자 무시**로 매칭
-- [ ] Soft Delete된 항목이 `content`에도 `totalElements`에도 포함되지 않음
-- [ ] 빈 결과 → **200** + `content: []` (404 아님)
-- [ ] 잘못된 `status` 값 → **400 + `COMMON_002`**
+**테스트 체크리스트 (Spring Boot Test + MockMvc)** — 실측(2026-08-31) `./mvnw test` `Tests run: 47, Failures: 0` / `BUILD SUCCESS`, `TodoListControllerTest` 7건
+- [x] 25건 생성 후 `size=10` → `totalElements=25`, `totalPages=3`, `page=0`에서 `hasNext=true`, `page=2`에서 `hasNext=false` — `paginatesTwentyFiveItemsAcrossThreePages`
+- [x] **`size=200` 요청이 100으로 절삭됨** — `oversizedSizeRequestIsClampedTo100`
+- [x] **타인 Todo가 목록에 섞이지 않음** — `anotherUsersTodosDoNotLeakIntoTheList`
+- [x] `keyword=JANG` 이 `jangbogi`류 제목을 **대소문자 무시**로 매칭 — `keywordSearchIsCaseInsensitive`
+- [x] Soft Delete된 항목이 `content`에도 `totalElements`에도 포함되지 않음 — `softDeletedTodosAreExcludedFromListAndCount`
+- [x] 빈 결과 → **200** + `content: []` (404 아님) — `emptyResultReturns200WithEmptyContentNotNotFound`
+- [x] 잘못된 `status` 값 → **400 + `COMMON_002`** — `invalidStatusFilterReturns400WithCommon002`
 
 ### Task 018: Todo 상태 변경(멱등)·Soft Delete API 구현
 
