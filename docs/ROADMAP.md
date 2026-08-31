@@ -237,7 +237,7 @@ M0 ─┬─► M1 ─► M2 ─┬─► M3 ─┐
 
 ---
 
-## M1. 백엔드 도메인 & 공통 기반 🧱
+## M1. 백엔드 도메인 & 공통 기반 🧱 ✅ 완료(2026-08-31)
 
 **목표**: 테스트 인프라·엔티티·공통 응답·예외·Soft Delete 기반을 마련하고, **PRD가 M1 실측으로 미룬 기술 불확실성 2건을 확정**한다.
 
@@ -305,31 +305,32 @@ M1 이후 모든 DoD가 "테스트로 확인"을 요구하는데, **테스트 DB
 - [x] `users.email` UNIQUE 제약 위반이 예외로 드러남 — `UserRepositoryTest.duplicateEmailViolatesUniqueConstraint`(`DataIntegrityViolationException`)
 - [x] 생성된 DDL이 `todolistdb` 스키마에 올라감 (스키마 폴딩 정합성) — `todosTableIsCreatedInTestSchema`로 확인(테스트 환경 기준 `todolistdb_test`, dev는 Hikari 로그의 `Default catalog/schema`로 기존에 확인된 패턴과 동일)
 
-### Task 010: 공통 응답·예외 처리 기반 구축
+### Task 010: 공통 응답·예외 처리 기반 구축 ✅ 완료
 
 **영역**: BE | **선행**: Task 007
 
-- [ ] `common/dto/ApiResponse.java` — `success`, `data`, `message`, `errorCode` (API_SPEC 1.1)
+- [x] `common/dto/ApiResponse.java` — `success`, `data`, `message`, `errorCode` (API_SPEC 1.1) — 실측(2026-08-31) record로 구현, `success(T)`/`fail(message,errorCode)`/`fail(data,message,errorCode)` 정적 팩토리 제공
   - ⚠️ `data`는 성공 시 `T`, 실패 시 `null`, **단 검증 실패(`COMMON_001`)에 한해 필드 에러 맵**을 담는다 (API_SPEC 1.3)
-- [ ] `common/dto/PageResponse.java` — `content`, `page`, `size`, `totalElements`, `totalPages`, `hasNext` (API_SPEC 1.2)
-- [ ] `common/exception/ErrorCode.java` enum — `COMMON_001/002/500`, `AUTH_001~007`, `TODO_001/002` (API_SPEC 2장 전수 반영)
-- [ ] `common/exception/CustomException.java`, `GlobalExceptionHandler.java`(`@RestControllerAdvice`)
-- [ ] `MethodArgumentNotValidException` 핸들러 — 필드 에러를 `Map<String,String>`으로 변환해 `COMMON_001`로 응답
+- [x] `common/dto/PageResponse.java` — `content`, `page`, `size`, `totalElements`, `totalPages`, `hasNext` (API_SPEC 1.2) — `Page<T>` → `PageResponse<T>` 변환 팩토리(`from`) 포함, `PageResponseTest`로 매핑 검증
+- [x] `common/exception/ErrorCode.java` enum — `COMMON_001/002/500`, `AUTH_001~007`, `TODO_001/002` (API_SPEC 2장 전수 반영) — HTTP 상태코드·기본 메시지까지 함께 보관
+- [x] `common/exception/CustomException.java`, `GlobalExceptionHandler.java`(`@RestControllerAdvice`) — `Exception` 전역 핸들러도 추가해 `COMMON_500`이 실제로 쓰이도록 함
+- [x] `MethodArgumentNotValidException` 핸들러 — 필드 에러를 `Map<String,String>`으로 변환해 `COMMON_001`로 응답
 
-**테스트 체크리스트 (Spring Boot Test + MockMvc)**
-- [ ] 성공 응답이 `{success:true, data:..., message:null, errorCode:null}` 형태
-- [ ] `CustomException` 발생 시 매핑된 HTTP 상태코드와 `errorCode`가 응답됨
-- [ ] `@Valid` 실패 시 `400` + `COMMON_001` + `data`에 **필드명→메시지 맵**
+**테스트 체크리스트 (Spring Boot Test + MockMvc)** — 실측(2026-08-31) `./mvnw test` `Tests run: 18, Failures: 0` / `BUILD SUCCESS`
+- [x] 성공 응답이 `{success:true, data:..., message:null, errorCode:null}` 형태 — `GlobalExceptionHandlerTest.successResponseMatchesContract`
+  - ⚠️ 아직 도메인 컨트롤러가 없어(M2~M4 예정) MockMvc standalone 모드로 테스트 전용 컨트롤러를 붙여 검증했다. `SecurityConfig`가 아직 없어(Task 012) `@SpringBootTest` 전체 컨텍스트 대신 이 방식을 택해 시큐리티 자동설정 이슈를 피했다
+- [x] `CustomException` 발생 시 매핑된 HTTP 상태코드와 `errorCode`가 응답됨 — `customExceptionMapsToDeclaredHttpStatusAndErrorCode`(`AUTH_002` → 409)
+- [x] `@Valid` 실패 시 `400` + `COMMON_001` + `data`에 **필드명→메시지 맵** — `validationFailureReturns400WithFieldErrorMap`
 
 **DoD**
-- [ ] 백엔드 테스트 인프라가 동작하고 전략이 문서화됨
-- [ ] `users`, `todos` 테이블이 PRD 8.2 스키마대로 생성/검증됨 (ID는 BIGINT, 공통 컬럼 3종 포함)
-- [ ] **JPA Auditing이 동작해 `created_at`/`updated_at`이 자동 기록됨**
-- [ ] **`Todo` 엔티티 포함 상태에서 애플리케이션이 기동됨** (PRD 8.4 실측 완료)
-- [ ] **Tiptap JSON이 손실 없이 저장·조회 왕복됨**
-- [ ] Soft Delete **3경로(단건·count·keyword) 모두** 테스트로 확인됨 (PRD 8.3)
-- [ ] 공통 응답/예외 포맷이 API_SPEC 1장·2장과 일치함
-- [ ] **PRD 13.3의 미해결 가정 2건(JSONB 매핑 / `@SQLRestriction` 범위)에 결론이 기록됨**
+- [x] 백엔드 테스트 인프라가 동작하고 전략이 문서화됨 (Task 007)
+- [x] `users`, `todos` 테이블이 PRD 8.2 스키마대로 생성/검증됨 (ID는 BIGINT, 공통 컬럼 3종 포함) (Task 009)
+- [x] **JPA Auditing이 동작해 `created_at`/`updated_at`이 자동 기록됨** (Task 008)
+- [x] **`Todo` 엔티티 포함 상태에서 애플리케이션이 기동됨** (PRD 8.4 실측 완료, Task 009)
+- [x] **Tiptap JSON이 손실 없이 저장·조회 왕복됨** (Task 009)
+- [x] Soft Delete **3경로(단건·count·keyword) 모두** 테스트로 확인됨 (PRD 8.3, Task 009)
+- [x] 공통 응답/예외 포맷이 API_SPEC 1장·2장과 일치함 (Task 010)
+- [x] **PRD 13.3의 미해결 가정 2건(JSONB 매핑 / `@SQLRestriction` 범위)에 결론이 기록됨** (Task 009 — 둘 다 "문제 없음"으로 확정)
 
 **의존성**: M0
 
