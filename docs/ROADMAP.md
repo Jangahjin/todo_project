@@ -627,23 +627,26 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] `localStorage.theme`를 `dark`/`light`로 바꾼 뒤 새로고침 시 첫 페인트 전에 `<html>`의 `.dark` 클래스가 정확히 반영됨(FOUC 방지 인라인 스크립트 동작 확인)
 - [x] `--primary` CSS 변수가 라이트/다크 모드 각각에서 중립 회색이 아닌 Indigo 색조로 계산됨(브라우저의 `getComputedStyle`로 직접 확인)
 
-### Task 021: API 클라이언트·토큰 저장 유틸·공통 타입 정의
+### Task 021: API 클라이언트·토큰 저장 유틸·공통 타입 정의 ✅ 완료
 
 **영역**: FE | **선행**: Task 019
 
-- [ ] `types/` — `ApiResponse<T>`, `PageResponse<T>`, `TodoResponse`, `UserResponse`, `TodoStatus`, `ErrorCode` (API_SPEC 1장·2장 기준)
-  - ⚠️ **`ApiResponse.data`는 실패 시 `null`이지만 `COMMON_001`에 한해 `Record<string,string>`** 이다. `ValidationErrorResponse` 별도 타입으로 분기한다 (API_SPEC 1.1)
-  - `any` 금지 (CLAUDE.md 4장)
-- [ ] `lib/auth/token.ts` — **`localStorage` 사용** ✅ 확정 (PRD 13.1)
+- [x] `types/` — `ApiResponse<T>`, `PageResponse<T>`, `TodoResponse`, `UserResponse`, `TodoStatus`, `ErrorCode` (API_SPEC 1장·2장 기준) — `types/api.ts`·`user.ts`·`auth.ts`·`todo.ts`로 분리
+  - ⚠️ **`ApiResponse.data`는 실패 시 `null`이지만 `COMMON_001`에 한해 `Record<string,string>`** 이다. `ValidationErrorResponse` 별도 타입으로 분기한다 (API_SPEC 1.1) — API_SPEC 1.1의 TS 예시를 그대로 반영(`ApiResponse<Record<string,string>> & { errorCode: 'COMMON_001' }`)
+  - `any` 금지 (CLAUDE.md 4장) — Tiptap `content`는 `any` 대신 `Record<string, unknown>`(`TiptapDocument`)로 정의
+- [x] `lib/auth/token.ts` — **`localStorage` 사용** ✅ 확정 (PRD 13.1)
   - httpOnly 쿠키는 불가 — PRD 10장이 `Authorization: Bearer`를 전제하므로 JS가 토큰을 읽어야 한다
   - `sessionStorage`는 탭을 닫으면 사라져 **24h 토큰의 의미가 없어진다**. XSS 노출도는 둘이 동일하므로 사용성이 나은 쪽을 택했다
-  - ⚠️ **SSR 안전성**: `localStorage`는 서버에 없다. 접근하는 코드는 클라이언트 컴포넌트이거나 `typeof window !== 'undefined'` 가드를 둔다
-- [ ] `lib/api/client.ts` — fetch 래퍼. **JWT 자동 첨부**, `NEXT_PUBLIC_API_BASE_URL` 사용
+  - ⚠️ **SSR 안전성**: `localStorage`는 서버에 없다. 접근하는 코드는 클라이언트 컴포넌트이거나 `typeof window !== 'undefined'` 가드를 둔다 — 세 함수(`getToken`/`setToken`/`clearToken`) 전부 가드 적용
+- [x] `lib/api/client.ts` — fetch 래퍼. **JWT 자동 첨부**, `NEXT_PUBLIC_API_BASE_URL` 사용
   - **401 응답 시 토큰 삭제 후 로그인 페이지로 리다이렉트** (API_SPEC 6장)
   - ⚠️ **리다이렉트 루프 방지** — 로그인/회원가입 페이지에서 받은 401은 리다이렉트하지 않는다
-- [ ] `lib/api/auth.ts`, `lib/api/todo.ts` — API_SPEC의 엔드포인트별 함수
+  - 실측: `apiFetch`는 React Query의 `queryFn`/`mutationFn`에서 컴포넌트 트리 밖으로도 호출되므로 `useRouter()`를 쓸 수 없다 — `window.location.href`로 전체 새로고침(ESLint `@next/next/no-location-assign-relative-destination` 경고는 이유를 명시하고 억제)
+- [x] `lib/api/auth.ts`, `lib/api/todo.ts` — API_SPEC의 엔드포인트별 함수
   - 목록 조회 함수는 `{ page, status, keyword }`를 인자로 받는다 — **URL 쿼리가 단일 출처**이므로 훅이 URL에서 읽어 그대로 전달한다 (PRD 6.4)
-- [ ] `.env.local` 생성 (`NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`) — **`.gitignore` 대상임을 확인**
+- [x] `.env.local` 생성 (`NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`) — **`.gitignore` 대상임을 확인** — 실측: 루트 `.gitignore`의 `.env*` 패턴에 이미 포함됨
+
+**검증** — 실측(2026-08-31) `npm run lint`(경고 0) / `npm run build`(TypeScript 컴파일 성공, `.env.local` 로드 확인). 아직 이 유틸을 실제로 쓰는 화면이 없어(M6부터 사용) 브라우저 검증은 해당 화면 구현 시점에 함께 진행한다.
 
 ### Task 022: Pagination 재사용 컴포넌트 구현
 
