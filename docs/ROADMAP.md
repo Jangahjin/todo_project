@@ -340,20 +340,21 @@ M1 이후 모든 DoD가 "테스트로 확인"을 요구하는데, **테스트 DB
 
 **목표**: 이메일 회원가입·로그인, JWT 발급/검증 체계, **그리고 프론트 연동에 필요한 CORS 기반**을 완성한다.
 
-### Task 011: JWT 토큰 발급·검증 컴포넌트 구현
+### Task 011: JWT 토큰 발급·검증 컴포넌트 구현 ✅ 완료
 
 **영역**: BE | **선행**: Task 009
 
-- [ ] `auth/jwt/JwtTokenProvider.java` — 토큰 생성·검증·클레임 추출 (jjwt 0.12.6 API)
-- [ ] **만료 24시간 고정** (`jwt.expiration=86400000`, 불변 규칙 4). **Refresh Token은 만들지 않는다**
-- [ ] 서명 키는 `${JWT_SECRET}` 환경변수에서만 읽는다 (불변 규칙 9)
-- [ ] `auth/jwt/JwtAuthenticationFilter.java` — `Authorization: Bearer {token}` 파싱 후 `SecurityContext` 설정
-- [ ] 토큰 상태별 `ErrorCode` 구분: 없음/형식오류 `AUTH_003`, 만료 `AUTH_004`, 서명 불일치 `AUTH_005`
+- [x] `auth/jwt/JwtTokenProvider.java` — 토큰 생성·검증·클레임 추출 (jjwt 0.12.6 API) — 실측(2026-08-31) `Jwts.builder()...signWith(SecretKey)` / `Jwts.parser().verifyWith(...)` 빌더 API로 구현
+- [x] **만료 24시간 고정** (`jwt.expiration=86400000`, 불변 규칙 4). **Refresh Token은 만들지 않는다** — `application.properties`/테스트 properties 양쪽에 반영
+- [x] 서명 키는 `${JWT_SECRET}` 환경변수에서만 읽는다 (불변 규칙 9) — main properties는 폴백 없이 `${JWT_SECRET}`만 참조(테스트는 비민감 더미 값 하드코딩). 실측: 로컬 셸에 `JWT_SECRET` 이미 설정돼 있어 `dev` 기동에 지장 없음
+- [x] `auth/jwt/JwtAuthenticationFilter.java` — `Authorization: Bearer {token}` 파싱 후 `SecurityContext` 설정 — `@Component`로 등록하지 않고 SecurityConfig(Task 012)가 필터체인에 수동으로 끼워 넣는 구조로 작성. 검증 실패 시 요청 속성(`JWT_EXCEPTION_ATTRIBUTE`)에 `CustomException`을 담아 Task 012의 EntryPoint가 읽도록 설계
+- [x] 토큰 상태별 `ErrorCode` 구분: 없음/형식오류 `AUTH_003`, 만료 `AUTH_004`, 서명 불일치 `AUTH_005` — `JwtTokenProvider.parseClaims`에서 분류
 
-**테스트 체크리스트 (JUnit 5)**
-- [ ] 발급 토큰의 만료가 **정확히 24시간 뒤**
-- [ ] 만료된 토큰이 `AUTH_004`로 판별됨
-- [ ] 서명이 다른 토큰이 `AUTH_005`로 판별됨
+**테스트 체크리스트 (JUnit 5)** — 실측(2026-08-31) `./mvnw test` `Tests run: 24, Failures: 0` / `BUILD SUCCESS`
+- [x] 발급 토큰의 만료가 **정확히 24시간 뒤** — `issuedTokenExpiresExactly24HoursLater`
+- [x] 만료된 토큰이 `AUTH_004`로 판별됨 — `expiredTokenIsClassifiedAsAuth004`
+- [x] 서명이 다른 토큰이 `AUTH_005`로 판별됨 — `tamperedSignatureIsClassifiedAsAuth005`
+  - 추가로 빈 토큰(`AUTH_003`)·형식 오류 토큰(`AUTH_003`)·클레임 추출(`userId`/`email`)도 함께 검증
 
 ### Task 012: SecurityConfig·CorsConfig 및 인증 진입점 구성
 
