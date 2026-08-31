@@ -585,23 +585,31 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] 설치 후 **PRD 1.3 표의 설치 상태를 ✅와 실제 버전으로 갱신** — Tiptap/OAuth2/Playwright의 오기도 함께 바로잡음
 - [x] `npm run lint` + `npm run build` 통과 확인 — 실측(2026-08-31) 둘 다 에러 없이 통과(`Compiled successfully`)
 
-### Task 020: 디자인 토큰·테마 프로바이더 구성 (Calm Minimal)
+### Task 020: 디자인 토큰·테마 프로바이더 구성 (Calm Minimal) ✅ 완료
 
 **영역**: FE | **선행**: Task 019
 
 **PRD 9.1의 확정값을 그대로 반영한다** (기존 로드맵에 누락되어 있던 항목).
 
+> ⚠️ **실측 정정(2026-08-31)**: 이 섹션도 Task 016·019와 같은 패턴이었다 — 아래 계획 문구는 이미 정확하게 적혀 있었지만 `providers/` 디렉토리 자체가 없어 실제로는 구현된 적이 없었다. 이번에 실제로 구현하고 `npm run lint`/`build`, 그리고 **Playwright로 브라우저에서 다크모드 전환을 직접 검증**했다.
+
 - [x] `app/globals.css`에 Tailwind 4 **CSS-first 디자인 토큰** 정의 (`tailwind.config.js`는 사용하지 않는다)
   - **베이스: 무채색 `neutral`** (`components.json`의 baseColor와 일치) — shadcn CLI 스캐폴딩 값 그대로 유지
-  - **액센트: `Indigo` 단 1개 고정** (PRD 13.1 확정) — `--primary`/`--ring`을 Tailwind 4 공식 indigo 스케일(oklch)로 교체(라이트: indigo-600, 다크: indigo-400). 그라디언트 미사용
+  - **액센트: `Indigo` 단 1개 고정** (PRD 13.1 확정) — `--primary`/`--ring`을 Tailwind 4 공식 indigo 스케일(oklch)로 교체(라이트: indigo-600, 다크: indigo-400). 그라디언트 미사용 — 실측: 값을 추측하지 않고 `node_modules/tailwindcss/theme.css`에서 `--color-indigo-600`/`--color-indigo-400`의 정확한 oklch를 직접 확인해 사용
   - **타이포그래피: `Geist`** — `next/font/google`로 이미 로딩되어 있어 재작업 없이 그대로 사용
   - **모서리: `rounded-xl`**, 그림자는 **아주 옅은 소프트 섀도우** — `--radius`를 0.625rem→0.75rem으로 조정
   - 넉넉한 여백, 콘텐츠 중앙 정렬, 카드 기반 리스트를 전제로 한 스페이싱 스케일
 - [x] `providers/ThemeProvider.tsx` — **다크모드(시스템 설정 연동 + 수동 토글, 선택값 로컬 저장)** (`UI-01`)
   - `next-themes`는 **도입하지 않고 자체 구현**했다. 기존 `globals.css`가 이미 `.dark` 클래스 토글 방식이라 Context + 인라인 스크립트(FOUC 방지, Next.js 16 공식 가이드 `preventing-flash-before-hydration` 패턴을 `.dark` 클래스 방식에 맞게 적용)로 충분해 불필요한 의존성을 추가하지 않았다
+  - 🐛 **실측(2026-08-31) 발견한 버그**: `"use client"` 파일(`ThemeProvider.tsx`)에서 내보낸 상수(`THEME_STORAGE_KEY`)를 서버 컴포넌트인 `app/layout.tsx`에서 값으로 직접 쓰면, Next.js가 client 파일의 모든 export를 client reference로 취급해 서버에서 참조하는 순간 런타임 에러가 난다(`Attempted to call THEME_STORAGE_KEY() from the server...`). `providers/theme-constants.ts`라는 지시어 없는 순수 상수 모듈로 분리해 양쪽에서 공유하도록 고쳤다. 브라우저 콘솔 에러로 실제로 잡아냈다
 - [x] `providers/QueryProvider.tsx` — React Query `QueryClient` 설정(재시도·`staleTime` 기본값)
 - [x] `app/layout.tsx`에 두 프로바이더 연결
-- [x] 필요한 shadcn/ui 컴포넌트 추가 (`npx shadcn@latest add button input card dialog select checkbox label dropdown-menu avatar badge separator`) — style은 `radix-nova` 유지
+- [x] 필요한 shadcn/ui 컴포넌트 추가 (`npx shadcn@latest add button input card dialog select checkbox label dropdown-menu avatar badge separator`) — style은 `radix-nova` 유지. `button`은 M0에서 이미 존재해 스킵됨
+
+**검증 (Playwright 브라우저 자동화)**
+- [x] `npm run lint` / `npm run build` 통과 — TypeScript·정적 페이지 생성 모두 에러 없음
+- [x] `localStorage.theme`를 `dark`/`light`로 바꾼 뒤 새로고침 시 첫 페인트 전에 `<html>`의 `.dark` 클래스가 정확히 반영됨(FOUC 방지 인라인 스크립트 동작 확인)
+- [x] `--primary` CSS 변수가 라이트/다크 모드 각각에서 중립 회색이 아닌 Indigo 색조로 계산됨(브라우저의 `getComputedStyle`로 직접 확인)
 
 ### Task 021: API 클라이언트·토큰 저장 유틸·공통 타입 정의
 
