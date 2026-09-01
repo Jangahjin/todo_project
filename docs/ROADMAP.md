@@ -834,25 +834,30 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 **검증** — 실측(2026-09-01) `npm run lint`/`build` 통과. 아직 이 컴포넌트를 쓰는 화면이 없어(Task 030) `app/(main)/todos/page.tsx` 스텁에 임시로 마운트해 브라우저로 직접 확인 후 되돌렸다: 하이드레이션 에러 없음(ThemeProvider와 달리 처음부터 문제 없었음), 한글 입력 정상, 전체 선택 후 굵게 토글 시 버튼이 `aria-pressed`로 반영되고 텍스트가 실제 `<strong>` 태그로 감싸짐(`onUpdate`→상태 왕복 확인).
 
-### Task 029: Todo 목록 화면 구현 (필터·페이지네이션)
+### Task 029: Todo 목록 화면 구현 (필터·페이지네이션) ⚠️ 클라이언트 검증 완료 — 백엔드 연동 검증은 대기
 
 **영역**: FE | **선행**: Task 022, Task 027
 
-- [ ] `app/(main)/todos/page.tsx` — 상단 필터 + 카드 리스트 + 하단 페이지네이션 (PRD 9.2)
-- [ ] `hooks/useTodos.ts` — React Query 훅. 쿼리 키에 `page`/`size`/`status`/`keyword` 포함
-- [ ] `components/todo/TodoFilter.tsx` — 상태 필터(전체/TODO/DONE) + 제목 검색(디바운스)
-- [ ] `components/todo/TodoList.tsx`, `TodoItem.tsx` — 제목·상태·마감일 표시, 클릭 시 상세로 이동
-- [ ] **`components/common/Pagination.tsx` 재사용** (새로 만들지 않는다 — 불변 규칙 7)
-- [ ] 필터/페이지 상태를 URL 쿼리와 동기화 — ⚠️ `useSearchParams()`는 **`<Suspense>` 래핑 필수** (Next 16)
-- [ ] **로딩 / 빈 상태 / 에러 UI** — 빈 결과는 `content: []`이지 404가 아니다 (API_SPEC 4.2)
-- [ ] "새 Todo" 버튼 → 작성 페이지
+- [x] `app/(main)/todos/page.tsx` — 상단 필터 + 카드 리스트 + 하단 페이지네이션 (PRD 9.2) — Task 026이 남긴 임시 placeholder를 실제 화면으로 교체
+- [x] `hooks/useTodos.ts` — React Query 훅. 쿼리 키에 `page`/`size`/`status`/`keyword` 포함
+- [x] `components/todo/TodoFilter.tsx` — 상태 필터(전체/TODO/DONE) + 제목 검색(디바운스 400ms)
+  - 디바운스 로직은 `useEffect`가 부모 콜백(`onKeywordChange`)만 호출하고 로컬 `setState`는 오직 `onChange` 핸들러에서만 호출하도록 분리했다 — `useEffect` 안에서 로컬 상태를 동기화하는 패턴은 ESLint `react-hooks/set-state-in-effect`에 걸린다는 걸 Task 026·027에서 이미 겪었다
+- [x] `components/todo/TodoList.tsx`, `TodoItem.tsx` — 제목·상태·마감일 표시, 클릭 시 상세로 이동(`/todos/{id}`, Task 030에서 실제 페이지 구현)
+- [x] **`components/common/Pagination.tsx` 재사용** (새로 만들지 않는다 — 불변 규칙 7) — 그대로 재사용
+- [x] 필터/페이지 상태를 URL 쿼리와 동기화 — ⚠️ `useSearchParams()`는 **`<Suspense>` 래핑 필수** (Next 16) — `TodosPageContent`를 분리해 `<Suspense>`로 감쌈
+- [x] **로딩 / 빈 상태 / 에러 UI** — 빈 결과는 `content: []`이지 404가 아니다 (API_SPEC 4.2) — `TodoList`가 빈 배열을 별도 안내 UI로 렌더, 페이지가 로딩 스켈레톤·에러 배너를 분리 처리
+- [x] "새 Todo" 버튼 → 작성 페이지(`/todos/new`, Task 030에서 구현)
 
-**테스트 체크리스트 (Playwright)**
+**검증** — 실측(2026-09-01) `npm run lint`/`build` 통과. 브라우저로 직접 확인: 헤더·필터·에러 배너(백엔드 부재로 `ERR_CONNECTION_REFUSED`, "목록을 불러오지 못했습니다" 정상 표시) 렌더 확인, 상태 필터 `DONE` 선택 시 `?status=DONE`으로 URL 갱신, 검색어 입력 후 디바운스 경과 시 `?status=DONE&keyword=장보기`로 정확히 병합됨을 확인
+
+**테스트 체크리스트 (Playwright)** — 실제 Todo 데이터가 있어야 확인 가능해 백엔드 연동 후로 대기(8080 포트 이슈, Task 024 참조)
 - [ ] Todo 12건 생성 후 목록에 **10건만 표시**되고 2페이지가 존재
 - [ ] 2페이지 이동 시 나머지 2건 표시, `aria-current`가 현재 페이지에 부여됨
 - [ ] 상태 필터 `DONE` 선택 시 완료 항목만 표시
 - [ ] 검색어 입력 시 매칭 항목만 표시, **대소문자를 구분하지 않음**
 - [ ] Todo가 없는 계정에서 **빈 상태 UI**가 렌더됨 (에러 아님)
+
+**남은 일**: `todo-backend`를 JDK 21로 정상 기동한 뒤 실제 Todo 데이터로 위 Playwright 시나리오를 검증한다.
 
 ### Task 030: Todo 작성/상세·편집 화면 구현
 
