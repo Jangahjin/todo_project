@@ -33,7 +33,7 @@
 | **Frontend** | Next.js **16.3.1** (App Router), React **19.2.8**, TypeScript 5, Tailwind CSS 4 | ✅ 설치됨 |
 | **UI** | shadcn **CLI 4.18.0** (style `radix-nova`, baseColor `neutral`), radix-ui, lucide-react **1.33.0** | ✅ 설치됨 |
 | **상태/모션** | React Query(TanStack Query) `@tanstack/react-query` **5.102.8**, `motion` **13.1.1**(Framer Motion 후신 패키지, React 19 호환 확인) | ✅ 설치됨 — 실측(2026-08-31, Task 019) |
-| **에디터** | Tiptap (리치 텍스트 웹에디터) `@tiptap/react`, `@tiptap/starter-kit` | ❌ **미설치** — ROADMAP대로 **M7(Task 028)** 에서 설치 예정. 실측(2026-08-31): `package.json`에 없음(이 표에 "✅ 설치됨"으로 잘못 기록돼 있던 것을 정정) |
+| **에디터** | Tiptap (리치 텍스트 웹에디터) `@tiptap/react` **3.30.6**, `@tiptap/pm` **3.30.6**, `@tiptap/starter-kit` **3.30.6** | ✅ 설치됨 — 실측(2026-09-01, Task 028) npm 레지스트리에서 `peerDependencies.react`가 `^17 \|\| ^18 \|\| ^19`임을 직접 확인 후 설치(React 19.2.8 호환) |
 | **폼 검증** | React Hook Form **7.87.0** + Zod **4.5.4** + `@hookform/resolvers` **5.9.1** (프론트) / Bean Validation (백엔드) | ✅ 프론트·백엔드 모두 설치됨 — 실측(2026-08-31, Task 019) |
 | **인증** | JWT (Access Token, 24시간 만료) + OAuth2 소셜 로그인 (Google, Kakao) | ⚠️ **JWT만 완료(M2)**. OAuth2 소셜 로그인(M3, Task 014~015)은 **미착수** — 실측(2026-08-31) 정정: Kakao `client-id`/`secret`이 아직 더미값(`OAUTH_KAKAO_CLIENT_ID:dummy-...`)이고 `CustomOAuth2UserService`/`OAuth2SuccessHandler` 코드 자체가 없다 |
 | **Database** | PostgreSQL (스키마명: `TodoListDB`) | ✅ 완료 (M0에서 `todolistdb` 소문자 폴딩 실측 확인) |

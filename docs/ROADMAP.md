@@ -820,17 +820,19 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 > ⚠️ **실측 정정(2026-09-01)**: 헤딩에 근거 없이 `✅`가 붙어 있었으나(다른 완료 마일스톤과 달리 날짜도 없음) Task 028 체크리스트가 전부 미완료라 명백한 오기였다. 제거한다.
 
-### Task 028: Tiptap 설치 및 에디터 래퍼 구현
+### Task 028: Tiptap 설치 및 에디터 래퍼 구현 ✅ 완료
 
 **영역**: FE | **선행**: Task 020
 
-- [ ] **Tiptap 설치** (`@tiptap/react`, `@tiptap/starter-kit` 등) — **React 19 호환 버전을 공식 문서에서 먼저 확인**한다 (CLAUDE.md 5장)
-- [ ] 설치 후 **PRD 1.3 표의 설치 상태를 ✅와 실제 버전으로 갱신**
-- [ ] `components/editor/TiptapEditor.tsx` — 래퍼 컴포넌트 (`"use client"`)
-  - **값 형식은 Tiptap JSON 문서 객체**다. 서버는 이를 불투명 데이터로 저장하므로 프론트가 파싱 없이 그대로 주고받는다 (PRD 8.4 / API_SPEC 4.1)
-  - `value` / `onChange` 인터페이스로 RHF와 연결
-- [ ] Calm Minimal 컨셉에 맞는 최소 툴바 (lucide-react 아이콘)
-- [ ] SSR 주의 — 에디터는 클라이언트에서만 마운트한다
+- [x] **Tiptap 설치** (`@tiptap/react` `@tiptap/pm` `@tiptap/starter-kit` **3.30.6**) — 설치 전 npm 레지스트리에서 `peerDependencies.react`가 `^17.0.0 || ^18.0.0 || ^19.0.0`임을 직접 확인(React 19.2.8 호환, CLAUDE.md 5장 "추측 금지" 준수). Tiptap 공식 문서(context7)도 함께 확인
+- [x] 설치 후 **PRD 1.3 표의 설치 상태를 ✅와 실제 버전으로 갱신** — 완료
+- [x] `components/editor/TiptapEditor.tsx` — 래퍼 컴포넌트 (`"use client"`)
+  - **값 형식은 Tiptap JSON 문서 객체**다. 서버는 이를 불투명 데이터로 저장하므로 프론트가 파싱 없이 그대로 주고받는다 (PRD 8.4 / API_SPEC 4.1) — 기존 `types/todo.ts`의 `TiptapDocument`(`Record<string, unknown>`) 재사용
+  - `value` / `onChange` 인터페이스로 RHF와 연결 — `onUpdate`에서 `editor.getJSON()`을 그대로 올려보내고, 외부에서 `value`가 바뀌면(수정 화면 비동기 로드 등) JSON 비교 후 `setContent(..., { emitUpdate: false })`로 반영해 onUpdate→value 왕복에 의한 커서 리셋을 피함
+- [x] Calm Minimal 컨셉에 맞는 최소 툴바 (lucide-react 아이콘) — 제목(H2)·굵게·기울임·취소선·글머리 기호 목록·번호 매기기 목록·인용구 7개, `Button` ghost/secondary variant로 active 상태 표시
+- [x] SSR 주의 — 에디터는 클라이언트에서만 마운트한다 — `immediatelyRender: false`(Tiptap 공식 Next.js 가이드) + `editor`가 준비되기 전 스켈레톤 렌더
+
+**검증** — 실측(2026-09-01) `npm run lint`/`build` 통과. 아직 이 컴포넌트를 쓰는 화면이 없어(Task 030) `app/(main)/todos/page.tsx` 스텁에 임시로 마운트해 브라우저로 직접 확인 후 되돌렸다: 하이드레이션 에러 없음(ThemeProvider와 달리 처음부터 문제 없었음), 한글 입력 정상, 전체 선택 후 굵게 토글 시 버튼이 `aria-pressed`로 반영되고 텍스트가 실제 `<strong>` 태그로 감싸짐(`onUpdate`→상태 왕복 확인).
 
 ### Task 029: Todo 목록 화면 구현 (필터·페이지네이션)
 
