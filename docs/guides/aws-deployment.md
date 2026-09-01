@@ -179,3 +179,61 @@ sudo journalctl -u todo-backend -f
 - [ ] 재부팅 후에도 서비스가 자동 기동되는지(`systemctl enable` 확인)
 
 이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` Task 037을 실측 결과로 갱신한다.
+
+---
+
+## Task 038: 프론트엔드 Amplify 배포
+
+`todo_frontend`는 별도 GitHub 저장소(`https://github.com/Jangahjin/todo-frontend`)라, 모노레포 루트 디렉터리 설정 없이 그대로 연결하면 된다. Amplify **자체 백엔드(Gen 2 `ampx`)는 쓰지 않는다** — 순수 프론트엔드 호스팅(SSR)만 필요하다.
+
+### 1. Amplify 앱 연결
+
+1. AWS 콘솔 → Amplify → **"새 앱 호스팅" → GitHub** 선택, 계정 인가.
+2. 저장소 `Jangahjin/todo-frontend`, 브랜치 **`main`** 선택 (ROADMAP 체크리스트 그대로).
+3. Amplify가 `package.json`을 보고 Next.js(App Router, SSR)로 자동 감지해 기본 빌드 설정을 제안한다. 기본값이면 대개 아래와 동일하다 — 커스터마이즈가 필요할 때만 저장소에 `amplify.yml`을 추가한다(현재는 없음, 기본 자동 감지로 충분할 가능성이 높음):
+   ```yaml
+   version: 1
+   frontend:
+     phases:
+       preBuild:
+         commands:
+           - npm ci
+       build:
+         commands:
+           - npm run build
+     artifacts:
+       baseDirectory: .next
+       files:
+         - '**/*'
+     cache:
+       paths:
+         - node_modules/**/*
+         - .next/cache/**/*
+   ```
+4. **컴퓨팅(SSR) 지원 확인** — Next.js App Router는 정적 내보내기가 아니라 SSR(서버 컴포넌트·API 라우트 없음이지만 동적 라우트 `/todos/[id]`가 있음)이 필요하다. Amplify Hosting이 빌드 설정 화면에서 "Next.js SSR 애플리케이션으로 배포"를 자동 인식하는지 확인 — 인식 못 하면 프레임워크 설정을 수동으로 "Next.js - SSR"로 지정한다.
+
+### 2. 환경변수
+
+콘솔의 App settings → Environment variables에 추가한다. 코드에서 실제로 참조하는 것은 이 하나뿐이다(`lib/api/client.ts`, `components/auth/SocialLoginButtons.tsx`).
+
+| 변수명 | 값 |
+|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | `https://<Task 037의 운영 백엔드 도메인/IP>` |
+
+⚠️ `NEXT_PUBLIC_` 접두사가 붙은 변수는 **빌드 시점에 클라이언트 번들에 인라인**된다 — 값을 바꾸면 재배포(재빌드) 전까지 반영되지 않는다. 로컬 `.env.local`의 `http://localhost:8080`과 혼동하지 않는다(그 파일은 Git에 커밋되지 않고 로컬 전용이다).
+
+### 3. HTTPS·커스텀 도메인
+
+1. Amplify 콘솔 → App settings → **Domain management** → 도메인 추가.
+2. 도메인을 Route 53에서 관리 중이면 Amplify가 자동으로 검증 레코드를 추가하고 **ACM 인증서를 자동 발급**한다. 외부 DNS라면 Amplify가 보여주는 CNAME/TXT 레코드를 해당 DNS에 수동으로 추가한다.
+3. 검증 완료까지 보통 수 분~수십 분 소요된다. 완료되면 `https://<도메인>`으로 자동 리다이렉트(HTTP→HTTPS)까지 Amplify가 처리한다.
+4. **주의**: 이 도메인이 확정되어야 Task 039에서 백엔드의 `APP_FRONTEND_URL`·CORS 허용 오리진·OAuth2 Redirect URI를 여기에 맞춰 갱신할 수 있다 — 커스텀 도메인 없이 Amplify가 기본 제공하는 `https://main.xxxxxxxxxx.amplifyapp.com` 주소로 우선 진행해도 무방하다(도메인은 나중에 붙여도 된다).
+
+### 4. 완료 후 확인할 것
+
+- [ ] Amplify 빌드 로그에서 `npm run build`(Next.js 빌드) 성공 확인
+- [ ] 배포된 URL(Amplify 기본 도메인 또는 커스텀 도메인)로 `/login` 접속 시 정상 렌더
+- [ ] 브라우저 개발자 도구에서 `NEXT_PUBLIC_API_BASE_URL`이 로컬이 아니라 운영 백엔드 주소로 요청이 나가는지 확인(Task 037의 백엔드가 아직 CORS를 로컬로 열어둔 상태라면 이 시점엔 요청이 CORS로 막힐 수 있다 — **정상**, Task 039에서 해결)
+- [ ] 커스텀 도메인 사용 시 `https://`로 자물쇠 아이콘 정상 표시(인증서 유효)
+
+이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` Task 038을 실측 결과로 갱신한다.

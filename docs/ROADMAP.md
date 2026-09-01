@@ -1039,13 +1039,15 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
   - **어떤 값도 Git에 커밋하지 않는다** (불변 규칙 9)
 - [ ] 보안그룹/포트, 프로세스 관리(systemd 등), 로그 확인 — 가이드 1·4·5절
 
-### Task 038: 프론트엔드 Amplify 배포
+### Task 038: 프론트엔드 Amplify 배포 ⏳ 실행 대기
 
 **영역**: 인프라 | **선행**: Task 037
 
-- [ ] AWS Amplify 연결(저장소 `main` 브랜치), 빌드 설정
-- [ ] 환경변수 `NEXT_PUBLIC_API_BASE_URL` = 운영 백엔드 주소
-- [ ] HTTPS 인증서 및 커스텀 도메인 확인
+> ⚠️ Task 036·037과 같은 이유로 Amplify 콘솔 연결·도메인 설정은 Claude Code가 이 환경에서 대신 실행할 수 없다. [docs/guides/aws-deployment.md](./guides/aws-deployment.md)의 "Task 038" 절에 GitHub 연결·빌드 설정(SSR 인식)·환경변수·HTTPS/커스텀 도메인 절차를 정리해뒀다 — **사용자가 직접 수행한 뒤 결과를 알려주면 실측 완료로 갱신한다.**
+
+- [ ] AWS Amplify 연결(저장소 `main` 브랜치), 빌드 설정 — 가이드 1절
+- [ ] 환경변수 `NEXT_PUBLIC_API_BASE_URL` = 운영 백엔드 주소 — 가이드 2절
+- [ ] HTTPS 인증서 및 커스텀 도메인 확인 — 가이드 3절
 
 > 📌 **S3는 MVP에서 사용하지 않는다** (PRD 1.3 · 13.1). 첨부파일이 범위 밖이고 Next.js 정적 자산은 Amplify가 자체 처리하므로 담을 것이 없다. 첨부파일을 도입하는 시점에 다시 검토한다.
 
