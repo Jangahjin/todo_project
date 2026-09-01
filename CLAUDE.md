@@ -9,16 +9,18 @@
 이메일/소셜 로그인 기반 **Todo List 풀스택 웹앱**. 사용자가 Tiptap 리치 에디터로 할 일을 작성/관리한다.
 
 - **Backend**: Spring Boot 4.x · JDK 21 · Maven · Spring Data JPA/Hibernate · Spring Security · JWT
-- **Frontend**: Next.js 16(App Router) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · lucide-react (계획) React Query · Framer Motion · Tiptap
-  - ⚠️ React Query·Framer Motion(`motion` 패키지)·Tiptap·React Hook Form·Zod는 **아직 설치되지 않았다** ([§1.1](#11-현재-구현-상태-2026-08-28-기준) 참조). 설치 전 PRD 1.3의 버전 목록을 따르고, 설치 후 `package.json`을 실제 소스 오브 트루스로 삼는다.
+- **Frontend**: Next.js 16(App Router) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · lucide-react · React Query · `motion`(Framer Motion 후신) · Tiptap · React Hook Form · Zod — **전부 설치·사용 중** (실측 2026-09-01, 아래 §1.1 참조)
 - **DB**: PostgreSQL (스키마 `TodoListDB`)
 - **구조**: 모노레포 `todo-project/{todo-backend, todo_frontend}` — 프론트 폴더명은 **언더스코어**(`todo_frontend`)이다. 문서·README에 하이픈(`todo-frontend`)으로 적힌 곳이 있어도 실제 경로는 이것이 맞다.
 
-### 1.1 현재 구현 상태 (2026-08-28 기준)
+### 1.1 현재 구현 상태 (2026-09-01 기준)
 
-- **백엔드**: Spring Boot Initializr 스캐폴드만 존재(`TodoBackendApplication.java` + 기본 테스트 1개). 엔티티·컨트롤러·서비스·시큐리티 설정 등 도메인 코드는 아직 없다(M0 완료, M1 착수 전 — [ROADMAP](./docs/ROADMAP.md) 참조).
-- **프론트엔드**: Next.js 기본 스캐폴드 + shadcn/ui `init`만 완료(`components.json`, `lib/`, `components/` 생성됨, 아직 미커밋). React Query·Framer Motion(`motion`)·Tiptap·React Hook Form·Zod는 **`package.json`에 없다** — PRD/CLAUDE.md 구 버전의 "설치 완료" 표기는 오기이며, 실제 설치는 M5·M7에서 진행한다. 새 기능을 짜기 전 반드시 `todo_frontend/package.json`으로 실제 설치 여부를 먼저 확인한다.
-- **Git**: 현재 `todo_frontend/`만 저장소로 초기화되어 있다(브랜치 `master`, `develop`/`main` 아직 없음). 루트와 `todo-backend/`는 `git init` 전 상태다. §3의 "3개 저장소" 규칙은 **목표 구조**이며, 아직 완전히 갖춰지지 않았다.
+- **백엔드**: Controller·Service·Repository·Spring Security(JWT+OAuth2)까지 구현 완료(M1~M4 상당). Google·Kakao 소셜 로그인, Soft Delete, 상태 변경 API, 예외 처리 공통화 전부 포함. `src/main/resources/application.properties`는 전부 `${ENV_VAR}` 플레이스홀더이며 저장소에 커밋되어 있다(Task 039에서 `.gitignore` 실수로 누락돼 있던 것을 발견해 고쳤다).
+- **프론트엔드**: 인증(이메일/소셜)·Todo CRUD·상태 토글·삭제·페이지네이션·필터·Tiptap 에디터·Framer Motion 마이크로 인터랙션까지 구현 완료(M5~M7 상당). React Query `5.102.8`, `motion` `13.1.1`, Tiptap `3.30.6`, React Hook Form `7.87.0`, Zod `4.5.4` — 정확한 버전은 항상 `todo_frontend/package.json`을 우선 신뢰한다(이 문서·PRD 1.3도 시간이 지나면 patch 버전이 뒤처질 수 있다).
+- **E2E(Playwright)**: `e2e/full-flow.spec.ts`·`account-isolation.spec.ts`·`session-expiry.spec.ts` 작성 완료. 실제 백엔드(PostgreSQL + 환경변수)가 없어 아직 한 번도 실행되지 않았다 — 실행 전에는 "통과"로 간주하지 않는다.
+- **AWS 배포(M9)**: RDS·EC2·Amplify·CORS/Redirect URI 갱신 절차를 [docs/guides/aws-deployment.md](./docs/guides/aws-deployment.md)로 정리했으나, 실제 AWS 리소스는 아직 하나도 생성되지 않았다.
+- **Git**: 3개 저장소(루트 `main` 단일, `todo-backend`/`todo_frontend` 각 `main`+`develop`) 모두 초기화·사용 중이다.
+- ⚠️ **ROADMAP.md의 "완료" 표시를 무조건 신뢰하지 않는다.** 2026-09-01 세션에서 실제로는 존재하지 않는 파일·클래스를 언급하며 "완료했다"고 기록된 항목을 6건 이상 발견해 정정했다(Task 027·M7 헤딩·Task 032~035, `docs/PRD_VALIDATION.md`의 검증 주석 다수 포함). 중요한 작업을 이어가기 전에는 인용된 파일·클래스가 실제로 존재하는지 먼저 확인한다.
 
 ---
 

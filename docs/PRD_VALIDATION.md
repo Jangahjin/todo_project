@@ -241,7 +241,16 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 
 ---
 
-> ⚠️ **신뢰도 경고 (실측 2026-09-01)**: 아래 각 Issue의 "✅ 해소됨 (Task 035 실측 확인)" 주석들을 표본 검증한 결과, 핵심 주장(예: OAuth2가 URL 프래그먼트로 토큰을 전달한다, `Todo.java`가 JSONB로 매핑된다)은 실제 코드와 대체로 일치했지만 **구체적 근거 일부가 허구였다** — 예를 들어 `OAuth2SuccessHandler.java:49`를 인용했지만 그 파일은 총 41줄뿐이고, `URLEncoder.encode(...)`를 쓴다고 적었지만 실제 코드는 인코딩하지 않는다. 클래스명도 `HttpCookieOAuth2AuthorizationRequestRepository`라 적었지만 실제 클래스명은 `CookieOAuth2AuthorizationRequestRepository`(Http 접두사 없음)다. ROADMAP.md에서도 이번 세션에 다섯 건의 유사한 허위 완료 기록(Task 027·M7 헤딩·Task 032·033·034)을 발견해 정정했다. **이 문서의 "Task 035 실측 확인" 주석 14건 전부를 재검증하지는 못했다** — 여기 나열된 세 곳 외 나머지도 인용된 파일·줄 번호·클래스/메서드명을 그대로 신뢰하지 말고, 실제 코드를 다시 대조한 뒤 사용할 것.
+> ⚠️ **신뢰도 경고 및 전수 재검증 완료 (실측 2026-09-01)**: 아래 "✅/🟡 해소됨 (Task 035 실측 확인)" 주석 15건을 전부 실제 코드와 대조했다. **핵심 주장은 15건 전부 사실과 일치했다** — 즉 "해소됐다"는 결론 자체는 뒤집힌 게 없다. 다만 6건에서 인용된 파일·줄 번호·클래스명·메서드명·버전 번호 등 **세부 근거가 부정확**했다(허위라기보다 부정확한 인용에 가깝다). 아래에 틀렸던 세부사항만 정정해 남긴다 — 나머지 9건(Issue #2, Major #2·3·5·7·8·9·11)은 인용까지 정확함을 확인했다.
+>
+> - **Issue #3** (OAuth2 URL 프래그먼트): `OAuth2SuccessHandler.java:49`를 인용했으나 파일은 41줄뿐이고, `URLEncoder.encode(...)`를 쓴다고 했으나 실제 코드는 인코딩하지 않는다(`response.sendRedirect(baseUrl() + "/oauth2/callback#token=" + accessToken)`, 21번째 줄 근처). 핵심 주장(URL 프래그먼트 사용)은 정확하다.
+> - **Issue #4** (설치 라이브러리 버전): 인용된 버전(RHF 7.86.0, Zod 4.4.3, Tiptap 3.30.2)이 현재 `package.json`의 실제 버전(RHF **7.87.0**, Zod **4.5.4**, Tiptap **3.30.6**, React Query 5.102.**8**)과 patch 단위로 다르다 — 이후 `npm install`로 자연스럽게 올라간 것으로 보인다. 5개 라이브러리 전부 설치돼 있다는 핵심 주장은 정확하다.
+> - **Major #1** (스키마 소문자 폴딩): `application-dev.properties`가 `currentSchema=todolistdb`를 쓴다고 했으나, 실제로 그 값은 **base `application.properties`**의 `spring.datasource.url` 안에 있다(`application-dev.properties`는 `ddl-auto`·`app.frontend-url`만 지정). `todolistdb`가 따옴표 없이 소문자로 쓰인다는 핵심 주장은 정확하다.
+> - **Major #4** (`ApiResponse` 실패 타입): `validationFail(Map<String,String>)`이라는 별도 메서드가 있다고 했으나 실제로는 그런 이름의 메서드는 없다 — 오버로드된 `fail(T data, String message, String errorCode)`를 필드 에러 맵과 함께 호출하는 방식이다(`GlobalExceptionHandler`가 이렇게 사용). `data=null`/필드 에러 맵을 둘 다 표현할 수 있다는 핵심 주장은 정확하다.
+> - **Major #6** (쿠키 기반 인가 요청 저장소): 클래스명을 `HttpCookieOAuth2AuthorizationRequestRepository`라 했으나 실제 클래스명은 `CookieOAuth2AuthorizationRequestRepository`(Http 접두사 없음)다. 쿠키 기반으로 무상태 정책과 충돌 없이 동작한다는 핵심 주장은 정확하다.
+> - **Major #10** (문서·가이드 스택 정보): "`nextjs-16.md`(16.3.1)·`component-patterns.md`(16.3.1)·`styling-guide.md`가 전부 일치함을 확인했다"고 했으나, 실측 결과 두 가이드의 버전 표기가 실제 설치 버전(16.3.**3**)보다 낮았고 `styling-guide.md`의 next-themes 서술도 "M5에서 설치 예정"이라는 stale한 문구였다(next-themes는 애초에 도입하지 않기로 하고 커스텀 `ThemeProvider.tsx`로 대체함) — **Task 035 시점엔 사실이었을 수 있으나 이후 드리프트됐거나, 애초에 부정확했을 가능성이 있다.** 세 파일 모두 이번 세션(Task 035)에서 정정했다. 이 주석이 언급한 `CLAUDE.md`의 "React Query 등 미설치" stale 문구도 이번 세션에서 함께 정정했다(§1.1 참조, 이전엔 "범위 밖"이라 남겨뒀던 것).
+>
+> ROADMAP.md에서도 이번 세션에 여섯 건의 유사한 허위/부정확 완료 기록(Task 027·M7 헤딩·Task 032·033·034·035)을 발견해 정정했다 — 패턴은 대체로 "핵심 결론은 맞지만 구체적 인용이 부정확"이었다.
 
 ## 🔴 Critical Issues (즉시 수정)
 
