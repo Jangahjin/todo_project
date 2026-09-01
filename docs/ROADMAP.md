@@ -730,26 +730,29 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 **남은 일**: `todo-backend`를 JDK 21로 재기동해 8080 포트 정체를 해소한 뒤, 위 서버 연동 항목·Playwright `auth.spec.ts`를 마저 검증한다.
 
-### Task 025: 소셜 로그인 버튼 및 OAuth2 콜백 페이지 구현
+### Task 025: 소셜 로그인 버튼 및 OAuth2 콜백 페이지 구현 ✅ 완료
 
 **영역**: FE | **선행**: Task 024
 
-- [ ] `components/auth/SocialLoginButtons.tsx` — Google/Kakao 버튼 → `{API_BASE}/oauth2/authorization/{provider}` 로 **전체 페이지 이동**(fetch 아님)
-- [ ] `app/oauth2/callback/page.tsx` — **프래그먼트 처리** (API_SPEC 3.5)
+- [x] `components/auth/SocialLoginButtons.tsx` — Google/Kakao 버튼 → `{API_BASE}/oauth2/authorization/{provider}` 로 **전체 페이지 이동**(fetch 아님) — `Button asChild`로 실제 `<a href>` 앵커를 렌더링해 자연스러운 풀네비게이션을 보장. `lib/api/client.ts`가 쓰는 `NEXT_PUBLIC_API_BASE_URL`을 그대로 재사용
+  - lucide-react에는 Google/Kakao 브랜드 로고가 없다(상표 아이콘은 의도적으로 제외됨, 실측 확인). 불확실한 SVG 경로를 추측해 재현하지 않고, 라벨 텍스트 + 카카오 공식 브랜드 컬러(`#FEE500`) 배경으로 구분
+  - `LoginForm`/`SignupForm` 하단에 `Separator` 구분선과 함께 배치(PRD 9.2 "카드 폼 + 하단 소셜 로그인 버튼")
+- [x] `app/oauth2/callback/page.tsx` — **프래그먼트 처리** (API_SPEC 3.5)
   1. `window.location.hash`에서 `token` 또는 `error` 추출
   2. 토큰 저장
   3. **`history.replaceState(null, '', '/oauth2/callback')` 로 URL에서 프래그먼트 제거**
   4. Todo 목록으로 이동
-  - ⚠️ 프래그먼트는 서버로 전송되지 않으므로 **클라이언트 컴포넌트**여야 한다
-  - ⚠️ **이 페이지에서는 외부 리소스(폰트·이미지·분석 스크립트)를 로드하지 않는다** (PRD 6.3)
-- [ ] `#error=AUTH_007` 수신 시 로그인 페이지로 이동 + 안내 메시지
-- [ ] 로딩 스피너 표시
+  - ⚠️ 프래그먼트는 서버로 전송되지 않으므로 **클라이언트 컴포넌트**여야 한다 — 반영 완료
+  - ⚠️ **이 페이지에서는 외부 리소스(폰트·이미지·분석 스크립트)를 로드하지 않는다** (PRD 6.3) — `lucide-react`의 로컬 SVG(`Loader2`) 외 아무것도 로드하지 않음
+- [x] `#error=AUTH_007` 수신 시 로그인 페이지로 이동 + 안내 메시지 — `/login?authError={code}` 쿼리로 전달, `LoginForm`이 코드별 안내 문구로 배너 표시(매핑 없는 코드는 범용 문구로 폴백)
+  - `LoginForm`이 `useSearchParams()`를 쓰게 되어 `app/(auth)/login/page.tsx`에 `<Suspense>` 경계를 추가(Next.js 16 요구사항)
+- [x] 로딩 스피너 표시 — `Loader2` 아이콘
 
-**테스트 체크리스트 (Playwright — M3 없이도 검증 가능)**
-- [ ] `/oauth2/callback#token=<유효토큰>` 직접 접속 → 토큰 저장 → Todo 목록 이동
-- [ ] **이동 후 주소창에 토큰이 남아 있지 않음** (`location.hash`가 비어 있음)
-- [ ] `/oauth2/callback#error=AUTH_007` → 로그인 페이지 + 에러 메시지
-- [ ] 소셜 버튼 클릭 시 `/oauth2/authorization/google` 로 내비게이션이 시작됨
+**테스트 체크리스트 (Playwright — M3 없이도 검증 가능)** — 실측(2026-09-01) 브라우저로 직접 확인(Playwright MCP 수동 조작, `auth.spec.ts` 자동화는 Task 024와 함께 보류 — 8080 포트 이슈 참조)
+- [x] `/oauth2/callback#token=<유효토큰>` 직접 접속 → 토큰 저장 → Todo 목록 이동 — `localStorage.accessToken`에 값이 저장되고 `/todos`로 이동함을 확인(`/todos` 자체는 아직 없어 404지만 흐름은 정상)
+- [x] **이동 후 주소창에 토큰이 남아 있지 않음** (`location.hash`가 비어 있음) — `window.location.hash === ""` 확인
+- [x] `/oauth2/callback#error=AUTH_007` → 로그인 페이지 + 에러 메시지 — `/login?authError=AUTH_007`로 이동 + "소셜 계정에서 이메일 정보를 가져오지 못했어요..." 배너 확인
+- [x] 소셜 버튼 클릭 시 `/oauth2/authorization/google` 로 내비게이션이 시작됨 — 스냅샷으로 `href="http://localhost:8080/oauth2/authorization/{google|kakao}"` 확인(실제 클릭 이동은 8080이 다른 프로세스에 점유돼 있어 링크 자체만 검증)
 
 > 위 시나리오는 **백엔드 OAuth2(M3) 없이도** 프래그먼트 계약만으로 검증된다. 실제 제공자 왕복은 M8(Task 033) 수동 검증에서 확인한다.
 
