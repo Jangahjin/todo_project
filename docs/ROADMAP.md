@@ -661,22 +661,28 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 **검증** — 실측(2026-09-01) `npm run lint`(에러 0) / `npm run build`(TypeScript 컴파일·정적 생성 성공). 아직 이 컴포넌트를 실제로 쓰는 화면이 없어(Todo 목록은 Task 029) 브라우저 상호작용·다크모드 검증은 해당 화면 구현 시점에 함께 진행한다.
 
-### Task 023: Playwright E2E 테스트 환경 구축
+### Task 023: Playwright E2E 테스트 환경 구축 ✅ 완료
 
 **영역**: FE | **선행**: Task 019
 
 **프론트엔드 테스트 도구가 하나도 없다.** M6·M7의 사용자 플로우 검증이 전부 이 Task에 의존한다.
 
-- [x] `@playwright/test` 설치 + `npx playwright install chromium`
-- [x] `playwright.config.ts` — `baseURL`, `webServer`(`npm run dev`), 리포터, 타임아웃
-- [x] `e2e/` 디렉토리 구조와 네이밍 규칙 확정 (`auth.spec.ts`, `todo.spec.ts` …)
+> ⚠️ **실측 정정(2026-09-01)**: 이 섹션 전체가 `[x]`로 미리 기록돼 있었으나 확인 결과 `package.json`에 `@playwright/test`가 없고 `playwright.config.ts`·`e2e/` 디렉토리 자체가 없었다(Task 002·007·016·019·020과 같은 패턴). 아래는 실제로 설치·구현하고 스모크 테스트를 통과시킨 뒤 다시 기록한 결과다.
+
+- [x] `@playwright/test` 설치(`^1.62.1`) + `npx playwright install chromium` — 실측(2026-09-01) `npm install -D @playwright/test` 및 Chromium 151.0.7922.34 바이너리 다운로드 완료
+- [x] `playwright.config.ts` — `baseURL`(`http://localhost:3000`), `webServer`(`npm run dev`, `reuseExistingServer: !CI`), 리포터, 타임아웃(120s)
+  - 🐛 **실측(2026-09-01) 발견한 버그**: 처음엔 `reporter: "html"`만 지정했는데, 로컬(비-CI) 실행에서 테스트 통과 후 HTML 리포트를 서빙하는 서버가 계속 떠 있어 **`playwright test` 프로세스가 종료되지 않았다**(스모크 테스트 자체는 몇 초 만에 통과했지만 프로세스는 몇 분째 안 끝남 — `netstat`/`Get-Process`로 dev 서버(port 3000)와 chromium이 정상 기동·통과된 것까지 확인 후에야 원인 파악). `reporter: [["list"], ["html", { open: "never" }]]`로 교체해 자동 서빙을 끄고 해결
+- [x] `e2e/` 디렉토리 구조와 네이밍 규칙 확정 — `e2e/smoke.spec.ts`(스모크) 우선 작성, `auth.spec.ts`/`todo.spec.ts`는 실제 화면이 생기는 M6·M8(Task 032)에서 추가한다
 - [x] `package.json`에 `"test:e2e": "playwright test"` 스크립트 추가
-- [x] **테스트 계정 준비 방식 확정** — 시나리오마다 랜덤 이메일로 가입하는 방식을 기본으로 한다(격리 보장, 백엔드에 시드 API를 만들지 않아도 됨)
-- [x] ⚠️ **E2E는 백엔드 기동을 전제로 한다.** 실행 순서(백엔드 dev → `npm run test:e2e`)를 README에 적는다
+- [x] **테스트 계정 준비 방식 확정** — 시나리오마다 랜덤 이메일로 가입하는 방식을 기본으로 한다(격리 보장, 백엔드에 시드 API를 만들지 않아도 됨). 실제 사용은 `auth.spec.ts`부터
+- [ ] ⚠️ **E2E는 백엔드 기동을 전제로 한다.** 실행 순서(백엔드 dev → `npm run test:e2e`)를 README에 적는다 — **아직 반영 안 함**, 별도로 진행 예정
 
 **테스트 체크리스트 (Playwright)**
-- [x] 스모크 시나리오 1건 통과 — 루트(`/`) 접속 시 렌더 오류 없음
-- [ ] 백엔드 미기동 시 실패 원인이 명확히 드러남
+- [x] 스모크 시나리오 1건 통과 — 실측(2026-09-01) `npm run test:e2e`: `✓ 1 [chromium] › e2e\smoke.spec.ts:7:5 › 루트(/) 접속 시 렌더 오류 없이 페이지가 로드된다 (454ms)`
+- [ ] 백엔드 미기동 시 실패 원인이 명확히 드러남 — 현재 스모크 테스트는 프런트 루트 렌더만 확인해 백엔드 의존이 없다. 이 항목은 API를 실제로 호출하는 `auth.spec.ts`/`todo.spec.ts`가 생기는 시점에 검증한다
+
+**Windows 환경에서 추가로 발견한 운영상 특이사항**
+`reporter` 수정 후에도 테스트 자체는 정상 통과하지만, **`playwright test` 프로세스가 웹서버(`npm run dev`) 정리 단계에서 다시 종료되지 않는 현상이 남아 있다.** Windows에서 Node의 `child_process`가 셸을 통해 띄운 손자 프로세스(`npm run dev` → `next dev`)에 종료 신호가 온전히 전파되지 않는 문제로 추정되며, 근본 원인은 아직 확정하지 못했다. 테스트 결과 자체는 신뢰할 수 있으나(통과 로그가 명확히 찍힘), 실행 후 `netstat`/`Get-Process`로 3000번 포트를 점유한 잔여 `node` 프로세스가 있는지 확인하고 필요하면 수동으로 종료해야 한다. CI 환경(M9 이후)에서는 컨테이너가 통째로 종료되므로 실질적 영향은 없을 것으로 예상되나, 로컬 반복 실행 시엔 주의가 필요하다.
 
 **DoD**
 - [x] 라이브러리 설치 완료 및 **PRD 1.3 설치 상태 표 갱신 완료**
@@ -684,9 +690,11 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 - [x] **PRD 9.1 확정값(액센트 `Indigo` / `Geist`·`Inter` / `rounded-xl` / `neutral` 베이스)이 디자인 토큰에 반영됨**
 - [x] React Query·테마 프로바이더가 `app/layout.tsx`에 적용됨
 - [x] `Pagination` 컴포넌트 단독 렌더 및 페이지 이동 콜백 동작, `aria-current` 적용
-- [ ] API 클라이언트가 **401 응답 시 토큰 삭제 후 로그인 페이지로 리다이렉트**(루프 없이)
-- [x] **Playwright가 설치되고 스모크 테스트가 통과함**
+- [x] API 클라이언트가 **401 응답 시 토큰 삭제 후 로그인 페이지로 리다이렉트**(루프 없이) — 실측(2026-09-01) 확인: `lib/api/client.ts`가 401 수신 시 `clearToken()` 후 `/login`으로 리다이렉트하되, `isOnAuthPage()`로 로그인·회원가입 페이지 자체에서 받은 401은 제외해 루프를 막는다
+- [x] **Playwright가 설치되고 스모크 테스트가 통과함** — 실측(2026-09-01) 확인
 - [x] `npm run lint` + `npm run build` 통과
+
+**남은 일**: README에 E2E 실행 순서(백엔드 dev → `npm run test:e2e`) 반영, 백엔드 미기동 시 실패 체크리스트 항목은 M6 이후 실제 API 시나리오와 함께 검증
 
 **의존성**: M0 · (백엔드와 병렬 가능)
 
