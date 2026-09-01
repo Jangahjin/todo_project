@@ -706,24 +706,29 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 > ⚠️ **Next.js 16 주의**: 동적 `params`/`searchParams`는 **Promise**이며(Async Request APIs 파괴적 변경), `useSearchParams()`는 가장 가까운 `<Suspense>` 경계까지 CSR로 전환된다. Suspense 없이 쓰면 프리렌더 단계에서 문제가 된다. 착수 전 `todo-frontend/node_modules/next/dist/docs/`의 해당 가이드를 확인한다.
 
-### Task 024: 로그인·회원가입 화면 구현
+### Task 024: 로그인·회원가입 화면 구현 ⚠️ 클라이언트 검증 완료 — 백엔드 연동 검증은 대기
 
 **영역**: FE | **선행**: Task 021
 
-- [ ] `app/(auth)/login/page.tsx`, `app/(auth)/signup/page.tsx` — 중앙 정렬 카드 폼 (PRD 9.2)
-- [ ] `components/auth/LoginForm.tsx`, `SignupForm.tsx` — React Hook Form + Zod
-- [ ] 클라이언트 검증: **이메일 형식**, **비밀번호 6자 이상**, 비밀번호 확인 일치
-  - ⚠️ **6자 이상 외의 복잡도 규칙(대문자·특수문자 등)을 추가하지 않는다** (불변 규칙 2)
-- [ ] 서버 검증 실패(`COMMON_001`) 응답의 **`data` 맵을 RHF 필드 에러로 매핑** (API_SPEC 1.3)
-- [ ] `AUTH_002`(이메일 중복), `AUTH_001`(로그인 실패) 메시지 처리
-- [ ] 회원가입 성공 → 로그인 페이지 / 로그인 성공 → 토큰 저장 후 Todo 목록 (PRD 3장 여정)
-- [ ] 인증 상태로 로그인/회원가입 접근 시 Todo 목록으로 리다이렉트
+> ⚠️ 이번 세션(2026-09-01)에서는 8080 포트에 **JDK 17로 구동된 다른 프로세스**가 이미 떠 있었다 — 응답 형식(`{"error":"ERROR_ACCESS_TOKEN"}`)도 이 프로젝트의 `ApiResponse` 계약과 달라 우리 `todo-backend`가 아닌 것으로 판단했다. 정체가 불명확한 프로세스를 임의로 종료하지 않고, 사용자 확인 결과 **클라이언트 단독 검증으로 마무리**하기로 했다. 서버 연동(회원가입 실제 성공, `AUTH_001`/`AUTH_002` 실제 응답, 로그인 후 토큰 저장)은 `todo-backend`를 JDK 21로 정상 기동한 뒤 재검증이 필요하다.
 
-**테스트 체크리스트 (Playwright)**
+- [x] `app/(auth)/login/page.tsx`, `app/(auth)/signup/page.tsx` — 중앙 정렬 카드 폼 (PRD 9.2) — 공통 `app/(auth)/layout.tsx`로 중앙 정렬을 한 곳에서 처리
+- [x] `components/auth/LoginForm.tsx`, `SignupForm.tsx` — React Hook Form + Zod
+  - 🐛 **실측(2026-09-01) 발견**: 이 프로젝트의 shadcn 레지스트리(`radix-nova` 스타일)에서 `form` 컴포넌트가 **빈 항목**으로 등록돼 있다(`npx shadcn add form` → 성공 코드로 끝나지만 파일 0개 생성, `view`로 확인해도 `files` 필드 자체가 없음). shadcn의 `Form`/`FormField` 래퍼를 추측으로 재현하지 않고, `register()`/`formState.errors`를 `Input`/`Label`과 직접 조합하는 표준 RHF 패턴으로 대체했다
+- [x] 클라이언트 검증: **이메일 형식**, **비밀번호 6자 이상**, 비밀번호 확인 일치 — `lib/schemas/auth.ts`(Zod) — 실측(2026-09-01) Playwright 브라우저로 직접 확인: 빈 제출 시 "이메일을 입력해주세요."/"비밀번호를 입력해주세요.", 5자 비밀번호+불일치 확인 비밀번호 제출 시 "비밀번호는 최소 6자 이상이어야 합니다."/"비밀번호가 일치하지 않습니다." 정상 표시
+  - ⚠️ **6자 이상 외의 복잡도 규칙(대문자·특수문자 등)을 추가하지 않는다** (불변 규칙 2) — 반영 완료
+- [x] 서버 검증 실패(`COMMON_001`) 응답의 **`data` 맵을 RHF 필드 에러로 매핑** — `lib/forms/applyServerError.ts`로 두 폼이 공유(코드 작성·타입 검증 완료, 위 사유로 실제 백엔드 응답 연동 검증은 대기)
+- [x] `AUTH_002`(이메일 중복) → `email` 필드 에러, `AUTH_001`(로그인 실패) → 폼 전체(`root`) 에러로 매핑하도록 구현(`applyServerError`) — 실제 응답 연동 검증은 대기
+- [x] 회원가입 성공 → 로그인 페이지 / 로그인 성공 → 토큰 저장 후 `/todos` 이동 — 코드 작성 완료(`router.push`), 실제 성공 응답 연동 검증은 대기
+- [x] 인증 상태로 로그인/회원가입 접근 시 Todo 목록으로 리다이렉트 — `app/(auth)/layout.tsx`에서 처리. 실측(2026-09-01) Playwright로 `localStorage.accessToken`을 심은 뒤 `/login` 접속 시 `/todos`로 실제 이동함을 확인(`/todos` 페이지 자체는 아직 없어 404지만, 리다이렉트 로직 자체는 정상 동작 확인됨)
+
+**테스트 체크리스트 (Playwright)** — 백엔드 연동이 필요해 이번 세션에서는 자동화 스펙(`auth.spec.ts`) 작성을 보류했다(위 8080 포트 이슈). 아래 항목은 `todo-backend`를 JDK 21로 정상 기동한 뒤 재개한다.
 - [ ] 랜덤 이메일 회원가입 → 로그인 페이지 이동 → 로그인 → Todo 목록 진입
-- [ ] 5자 비밀번호 입력 시 **제출 전 클라이언트 에러 메시지** 표시
+- [x] 5자 비밀번호 입력 시 **제출 전 클라이언트 에러 메시지** 표시 — 실측(2026-09-01) 브라우저로 확인(위 참조)
 - [ ] 중복 이메일 가입 시도 시 이메일 필드에 에러 표시
 - [ ] 틀린 비밀번호 로그인 시 에러 메시지 표시 + 페이지 유지
+
+**남은 일**: `todo-backend`를 JDK 21로 재기동해 8080 포트 정체를 해소한 뒤, 위 서버 연동 항목·Playwright `auth.spec.ts`를 마저 검증한다.
 
 ### Task 025: 소셜 로그인 버튼 및 OAuth2 콜백 페이지 구현
 
