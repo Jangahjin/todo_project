@@ -84,3 +84,98 @@ psql -h <RDS엔드포인트> -U <마스터유저> -d postgres -f todolistdb_sche
 - [ ] `DB_URL`·`DB_USERNAME`·`DB_PASSWORD` 값을 안전한 곳(비밀번호 관리자, AWS Secrets Manager 등)에 기록 — **Git에는 커밋하지 않는다**
 
 이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` Task 036을 실측 결과로 갱신한다.
+
+---
+
+## Task 037: 백엔드 EC2 배포 및 환경변수 주입
+
+### 1. EC2 인스턴스 준비
+
+| 항목 | 권장값 | 근거 |
+|---|---|---|
+| AMI | Amazon Linux 2023 | `dnf`로 JDK 21을 바로 설치 가능 |
+| 인스턴스 타입 | `t3.micro`~`t3.small` (MVP 트래픽 기준) | 과다 스펙 지양 |
+| 보안 그룹(인바운드) | `22`(SSH, 관리자 IP만) · `8080`(앱 포트, 프런트/ALB에서만 — MVP는 우선 전체 허용 후 Task 039에서 좁혀도 됨) | 최소 노출 |
+| RDS 보안그룹 연동 | Task 036에서 만든 RDS 보안그룹의 인바운드 5432를 **이 EC2의 보안그룹**으로 허용 | Task 036 1절과 맞물림 |
+| JDK 설치 | `sudo dnf install -y java-21-amazon-corretto` | CLAUDE.md — JDK 21 고정 |
+
+```bash
+java -version   # openjdk 21이 나와야 한다
+```
+
+### 2. 빌드 산출물 배포
+
+로컬(또는 CI)에서 빌드한 뒤 EC2로 전송하는 방식을 권장한다 — EC2에 Maven·소스 전체를 둘 필요가 없다.
+
+```bash
+# 로컬 todo-backend/에서
+./mvnw clean package -DskipTests   # target/todo-backend-0.0.1-SNAPSHOT.jar 생성
+
+# EC2로 전송
+scp -i <키페어.pem> target/todo-backend-0.0.1-SNAPSHOT.jar ec2-user@<EC2 퍼블릭IP>:/home/ec2-user/app.jar
+```
+
+### 3. 환경변수 주입 — systemd `EnvironmentFile`
+
+**어떤 값도 Git에 커밋하지 않는다**(불변 규칙 9). EC2 로컬에만 존재하는 파일로 분리한다.
+
+```bash
+# EC2에서 — 이 파일은 EC2 로컬에만 존재, 저장소에 절대 두지 않는다
+sudo tee /etc/todo-backend.env > /dev/null <<'EOF'
+DB_URL=jdbc:postgresql://<RDS엔드포인트>:5432/postgres?currentSchema=todolistdb
+DB_USERNAME=<마스터유저>
+DB_PASSWORD=<Task 036에서 정한 비밀번호>
+JWT_SECRET=<충분히 긴 랜덤 값>
+OAUTH_GOOGLE_CLIENT_ID=<값>
+OAUTH_GOOGLE_CLIENT_SECRET=<값>
+OAUTH_KAKAO_CLIENT_ID=<값>
+OAUTH_KAKAO_CLIENT_SECRET=<값>
+APP_FRONTEND_URL=https://<운영 프론트 도메인>
+EOF
+
+sudo chmod 600 /etc/todo-backend.env   # ec2-user/root만 읽도록 제한
+```
+
+> 더 안전하게 하려면 평문 파일 대신 **AWS Systems Manager Parameter Store**(SecureString)에 저장하고 기동 스크립트에서 `aws ssm get-parameters`로 읽어와 이 파일을 생성하는 방식으로 바꿀 수 있다 — MVP는 위 방식으로 시작하고 필요시 전환한다.
+
+### 4. systemd 서비스 등록 — 프로세스 관리·자동 재시작·로그
+
+```ini
+# /etc/systemd/system/todo-backend.service
+[Unit]
+Description=Todo Backend (Spring Boot)
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+EnvironmentFile=/etc/todo-backend.env
+ExecStart=/usr/bin/java -jar /home/ec2-user/app.jar --spring.profiles.active=prod
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now todo-backend
+sudo systemctl status todo-backend   # active (running) 확인
+
+# 로그 확인 (ApiResponse 포맷 에러, DB 연결 실패 등은 여기서 먼저 보인다)
+sudo journalctl -u todo-backend -f
+```
+
+⚠️ **환경변수 중 하나라도 빠지면 `prod` 프로파일은 의도적으로 기동에 실패한다**(기본값 없음, CLAUDE.md 4장) — `journalctl`에 `Could not resolve placeholder` 류의 에러가 보이면 `/etc/todo-backend.env`의 누락 항목을 먼저 의심한다.
+
+### 5. 완료 후 확인할 것
+
+- [ ] `java -version`이 21을 보고
+- [ ] `systemctl status todo-backend`가 `active (running)`
+- [ ] `curl http://localhost:8080/api/auth/login`(등 아무 엔드포인트)이 `ApiResponse` 포맷 JSON으로 응답(연결 자체는 됨을 의미)
+- [ ] `journalctl -u todo-backend`에 DB 연결·JWT·OAuth2 관련 에러 없음
+- [ ] `/etc/todo-backend.env`가 `chmod 600`, Git 추적 대상 아님(EC2 로컬 파일이므로 애초에 저장소 밖)
+- [ ] 재부팅 후에도 서비스가 자동 기동되는지(`systemctl enable` 확인)
+
+이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` Task 037을 실측 결과로 갱신한다.

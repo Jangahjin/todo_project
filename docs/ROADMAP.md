@@ -1026,16 +1026,18 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
   - 초기 1회는 `dev` 설정으로 스키마를 생성하거나, M1에서 생성된 DDL을 SQL로 추출해 적용한다 — 가이드 3절(방법 A/B)
 - [ ] 백업/스냅샷 정책 확인 — 가이드 4절
 
-### Task 037: 백엔드 EC2 배포 및 환경변수 주입
+### Task 037: 백엔드 EC2 배포 및 환경변수 주입 ⏳ 실행 대기
 
 **영역**: 인프라 | **선행**: Task 036
 
-- [ ] EC2 인스턴스(JDK 21) 준비, `./mvnw clean package` 산출물 배포
-- [ ] `--spring.profiles.active=prod` 로 기동
-- [ ] **시스템 환경변수 주입** — `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `OAUTH_GOOGLE_*`, `OAUTH_KAKAO_*`, `APP_FRONTEND_URL` (PRD 12.1)
+> ⚠️ Task 036과 같은 이유로 EC2 프로비저닝·SSH 배포는 Claude Code가 이 환경에서 대신 실행할 수 없다. [docs/guides/aws-deployment.md](./guides/aws-deployment.md)의 "Task 037" 절에 인스턴스 설정값·빌드/전송 명령·systemd 서비스 유닛·환경변수 주입 방법을 정리해뒀다 — **사용자가 직접 수행한 뒤 결과를 알려주면 실측 완료로 갱신한다.**
+
+- [ ] EC2 인스턴스(JDK 21) 준비, `./mvnw clean package` 산출물 배포 — 가이드 1~2절
+- [ ] `--spring.profiles.active=prod` 로 기동 — 가이드 4절
+- [ ] **시스템 환경변수 주입** — `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `OAUTH_GOOGLE_*`, `OAUTH_KAKAO_*`, `APP_FRONTEND_URL` (PRD 12.1) — 가이드 3절
   - ⚠️ `prod`는 기본값을 두지 않는다. 환경변수가 없으면 **기동에 실패**하도록 설계되어 있다 (의도된 동작)
   - **어떤 값도 Git에 커밋하지 않는다** (불변 규칙 9)
-- [ ] 보안그룹/포트, 프로세스 관리(systemd 등), 로그 확인
+- [ ] 보안그룹/포트, 프로세스 관리(systemd 등), 로그 확인 — 가이드 1·4·5절
 
 ### Task 038: 프론트엔드 Amplify 배포
 
