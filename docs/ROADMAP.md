@@ -648,16 +648,18 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 **검증** — 실측(2026-08-31) `npm run lint`(경고 0) / `npm run build`(TypeScript 컴파일 성공, `.env.local` 로드 확인). 아직 이 유틸을 실제로 쓰는 화면이 없어(M6부터 사용) 브라우저 검증은 해당 화면 구현 시점에 함께 진행한다.
 
-### Task 022: Pagination 재사용 컴포넌트 구현
+### Task 022: Pagination 재사용 컴포넌트 구현 ✅ 완료
 
 **영역**: FE | **선행**: Task 020
 
-- [ ] `components/common/Pagination.tsx` — **재사용 컴포넌트로 구현** (불변 규칙 7, `UI-02`)
-- [ ] 이전/다음 버튼, 페이지 번호, **생략 표시(`...`)**, 현재 페이지 하이라이트
-- [ ] shadcn/ui + lucide-react 아이콘 사용
-- [ ] 접근성: `aria-current="page"`, 각 버튼에 `aria-label`, 키보드 포커스 이동
-- [ ] props 설계: `page`(0-base), `totalPages`, `onPageChange` — `PageResponse`와 그대로 맞물리게 한다
-- [ ] 경계 처리: `totalPages<=1`이면 렌더 생략, 첫/마지막 페이지에서 이전/다음 비활성화
+- [x] `components/common/Pagination.tsx` — **재사용 컴포넌트로 구현** (불변 규칙 7, `UI-02`) — 실측(2026-09-01) 작성
+- [x] 이전/다음 버튼, 페이지 번호, **생략 표시(`...`)**, 현재 페이지 하이라이트 — `buildPageItems()`가 현재 페이지 좌우 1칸(`SIBLING_COUNT`) + 처음/끝 페이지만 남기고 나머지를 `ellipsis-left`/`ellipsis-right`로 접는다(양쪽에 생략 표시가 동시에 나올 수 있어 문자열 토큰을 좌우로 구분해 React key 충돌을 피함)
+- [x] shadcn/ui(`Button`) + lucide-react(`ChevronLeft`/`ChevronRight`/`Ellipsis`) 사용 — 아이콘 실제 존재 여부를 추측하지 않고 설치된 `lucide-react@1.34.0`의 `dist/esm/icons`에서 파일명 확인 후 사용
+- [x] 접근성: 현재 페이지 버튼에 `aria-current="page"`, 이전/다음·페이지 버튼 전부 `aria-label`, 생략 표시는 `aria-hidden`으로 스크린리더 노이즈 제거 — 키보드 포커스 이동은 네이티브 `<button>` 시맨틱(및 `disabled` 시 자동 tab 스킵)에 위임해 별도 로직 없이 충족
+- [x] props 설계: `page`(0-base), `totalPages`, `onPageChange` — API_SPEC 1.2 `PageResponse`와 동일하게 0-base 유지, 화면 표시만 `page+1`로 1-base 변환. URL 동기화는 컴포넌트 책임 밖(호출부가 `onPageChange`에서 처리)으로 남겨 CLAUDE.md의 "URL 쿼리가 단일 출처" 원칙과 분리
+- [x] 경계 처리: `totalPages<=1`이면 `null` 반환, `page<=0`/`page>=totalPages-1`에서 이전/다음 버튼 `disabled`
+
+**검증** — 실측(2026-09-01) `npm run lint`(에러 0) / `npm run build`(TypeScript 컴파일·정적 생성 성공). 아직 이 컴포넌트를 실제로 쓰는 화면이 없어(Todo 목록은 Task 029) 브라우저 상호작용·다크모드 검증은 해당 화면 구현 시점에 함께 진행한다.
 
 ### Task 023: Playwright E2E 테스트 환경 구축
 
