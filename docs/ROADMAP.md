@@ -1014,15 +1014,17 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 **목표**: PRD의 배포 아키텍처로 운영 환경에 배포한다.
 
-### Task 036: RDS(PostgreSQL) 프로비저닝 및 운영 스키마 준비
+### Task 036: RDS(PostgreSQL) 프로비저닝 및 운영 스키마 준비 ⏳ 실행 대기
 
 **영역**: 인프라 | **선행**: M8
 
-- [ ] RDS PostgreSQL 인스턴스 생성, 보안그룹(EC2에서만 접근)
-- [ ] **따옴표 없이** `CREATE SCHEMA IF NOT EXISTS TodoListDB;` → `\dn`으로 `todolistdb` 확인 (PRD 8.1)
+> ⚠️ AWS 콘솔/CLI 조작은 Claude Code가 이 환경에서 대신 실행할 수 없다(AWS CLI·`~/.aws` 자격증명 모두 없음, 실측 2026-09-01). 아래 체크리스트·SQL·백업 정책을 [docs/guides/aws-deployment.md](./guides/aws-deployment.md)에 정리해뒀다 — **사용자가 직접 AWS에서 수행한 뒤 결과를 알려주면 이 Task를 실측 완료로 갱신한다.**
+
+- [ ] RDS PostgreSQL 인스턴스 생성, 보안그룹(EC2에서만 접근) — 가이드 1절
+- [ ] **따옴표 없이** `CREATE SCHEMA IF NOT EXISTS TodoListDB;` → `\dn`으로 `todolistdb` 확인 (PRD 8.1) — 가이드 2절
 - [ ] ⚠️ **`prod` 프로파일은 `ddl-auto=validate`** 다. 스키마·테이블이 미리 존재하지 않으면 기동에 실패한다
-  - 초기 1회는 `dev` 설정으로 스키마를 생성하거나, M1에서 생성된 DDL을 SQL로 추출해 적용한다
-- [ ] 백업/스냅샷 정책 확인
+  - 초기 1회는 `dev` 설정으로 스키마를 생성하거나, M1에서 생성된 DDL을 SQL로 추출해 적용한다 — 가이드 3절(방법 A/B)
+- [ ] 백업/스냅샷 정책 확인 — 가이드 4절
 
 ### Task 037: 백엔드 EC2 배포 및 환경변수 주입
 
