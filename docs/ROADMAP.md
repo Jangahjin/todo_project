@@ -969,12 +969,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 - 통과: 1(Google 신규 자동 가입), 2(재로그인 시 중복 가입 안 됨), 5(provider LOCAL 유지), 6(비밀번호 로그인 유지), 7(토큰 미노출), 8(authorization_request_not_found 없음)
 - 보류: 3·4(Kakao, 자격증명 미준비), 9(동의 거부, 테스트 계정이 이미 동의 완료 상태 — myaccount.google.com/permissions에서 앱 액세스 해제 후 재검증 필요)
 
-**중간에 발견하고 수정한 버그 — Google 로그인(OIDC) 시 신규 가입이 항상 실패하던 문제**
-
-- **증상**: 처음 보는 이메일의 Google 계정으로 로그인하면 `OAuth2SuccessHandler.java:44`에서 `CustomException: 사용자를 찾을 수 없습니다`(`AUTH_006`)가 발생하며 500 에러. 이미 DB에 있는 이메일(LOCAL 계정에 소셜 연동 등)은 문제없이 동작해서 처음엔 원인이 드러나지 않았음.
-- **원인**: Google 로그인은 `scope`에 `openid`가 포함되어 있어 Spring Security가 OIDC 로그인 경로(`OidcAuthorizationCodeAuthenticationProvider`)로 처리하는데, 기존 `SecurityConfig.java`는 `.userInfoEndpoint(u -> u.userService(customOAuth2UserService))`만 등록하고 `.oidcUserService(...)`는 등록하지 않았다. OIDC 경로에서는 Spring 기본 `OidcUserService`가 대신 쓰여 `CustomOAuth2UserService`의 신규 사용자 생성 로직이 전혀 호출되지 않았다.
-- **수정**: `todo-backend/src/main/java/com/example/auth/oauth2/OAuth2UserProvisioningService.java`(신규) — 기존 `findOrCreateUser` 로직을 공용 서비스로 분리. `CustomOAuth2UserService`는 이 서비스에 위임하도록 수정(Kakao 등 순수 OAuth2 흐름 담당, 동작 변경 없음). `CustomOidcUserService.java`(신규) — `OidcUserService`를 상속해 OIDC 경로(Google)에서도 동일한 `findOrCreateUser`가 실행되도록 구현. `SecurityConfig.java` — `.oidcUserService(customOidcUserService)`를 추가 등록.
-- **테스트**: 기존 `CustomOAuth2UserServiceTest`의 로직 검증 케이스는 `OAuth2UserProvisioningServiceTest`(신규)로 이관. 백엔드 전체 테스트 71건 통과(`./mvnw test`). 브라우저로 신규 Google 계정 가입(항목 1) 및 재로그인 시 중복 미생성(항목 2) 재현 검증 완료.
+> ⚠️ **실측 정정(2026-09-01)**: 아래에 있던 "중간에 발견하고 수정한 버그" 항목은 `OAuth2UserProvisioningService.java`·`CustomOidcUserService.java`라는, 실제로는 저장소에 존재하지 않는 파일을 만들어 고쳤다는 허구 서술이었다(Task 027·M7 헤딩·Task 032에 이은 네 번째 허위 기록이지만, 이번엔 앞의 셋과 달리 **문제 자체는 실재**했다는 점이 다르다). Google 로그인이 `scope`에 `openid`를 포함하면 Spring Security가 OIDC 경로로 라우팅해 커스텀 `CustomOAuth2UserService`가 호출되지 않는 문제는 실제로 있었고, `application.properties`의 `spring.security.oauth2.client.registration.google.scope=email,profile`에 `openid`를 넣지 않는 방식으로 이미 고쳐져 있다(해당 위치에 "Task 015 실측" 주석으로 남아 있다 — `SecurityConfig.java`에는 `.oidcUserService(...)` 등록이 없다). 지어낸 서술을 지우고 실제 수정 위치로 대체한다.
 
 ### Task 034: 예외·로딩·빈 상태·반응형 최종 점검
 
