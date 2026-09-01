@@ -859,24 +859,29 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 **남은 일**: `todo-backend`를 JDK 21로 정상 기동한 뒤 실제 Todo 데이터로 위 Playwright 시나리오를 검증한다.
 
-### Task 030: Todo 작성/상세·편집 화면 구현
+### Task 030: Todo 작성/상세·편집 화면 구현 ✅
 
 **영역**: FE | **선행**: Task 028, Task 029
 
-- [ ] `app/(main)/todos/new/page.tsx` — 제목 인풋(필수, 255자) + `TiptapEditor` + 마감일 피커 + 저장/취소
-- [ ] `app/(main)/todos/[id]/page.tsx` — 기존 값 로드 후 편집 폼
-  - ⚠️ Next 16에서 **`params`는 Promise**다 (Async Request APIs 파괴적 변경)
-- [ ] `components/todo/TodoForm.tsx` — 작성/편집 공용, RHF + Zod
-- [ ] **`PUT` 요청 시 `title`·`status`를 항상 포함**한다 — 생략하면 서버가 400을 반환한다 (API_SPEC 4.5)
-- [ ] **404 처리** — 없거나 타인 소유(`TODO_001`)면 Todo 목록으로 이동 + 안내 메시지 (PRD 3장 리다이렉트 규칙)
-- [ ] 저장/취소 후 목록으로 이동, React Query 캐시 무효화
+- [x] `app/(main)/todos/new/page.tsx` — 제목 인풋(필수, 255자) + `TiptapEditor` + 마감일 피커 + 저장/취소
+- [x] `app/(main)/todos/[id]/page.tsx` — 기존 값 로드 후 편집 폼
+  - ⚠️ Next 16에서 **`params`는 Promise**다 (Async Request APIs 파괴적 변경) — 클라이언트 컴포넌트라 `await` 대신 React `use(params)`로 언래핑했다.
+  - 상태 토글·삭제 버튼은 아직 없다 — Task 031 범위. 지금은 로드된 `status`를 그대로 유지한 채 PUT을 보낸다.
+- [x] `components/todo/TodoForm.tsx` — 작성/편집 공용, RHF + Zod(`lib/schemas/todo.ts`). Tiptap 본문은 네이티브 필드가 아니라 별도 state로 관리해 폼 값과 합쳐 제출한다.
+- [x] **`PUT` 요청 시 `title`·`status`를 항상 포함**한다 — `status`는 로드된 값을 그대로 재전송한다(API_SPEC 4.5).
+- [x] **404 처리** — `TODO_001`(404)이면 `router.replace("/todos?notice=not_found")`로 이동, 목록 페이지가 쿼리로 안내 배너를 렌더한다(PRD 3장 리다이렉트 규칙). 네트워크 오류(백엔드 미기동 등)는 `ApiError` 404와 구분해 오탐 리다이렉트하지 않는다.
+- [x] 저장/취소 후 목록으로 이동, `queryClient.invalidateQueries({queryKey:["todos"]})`로 캐시 무효화
+
+**버그 수정(본 Task 검증 중 발견)**: `app/(main)/layout.tsx`의 인증 가드가 `/todos/new`·`/todos/[id]`를 **하드 리로드**하면 `/login`으로 오탐 리다이렉트되는 버그를 발견해 고쳤다. `useSyncExternalStore`의 서버 스냅샷(`null`)이 실제 토큰으로 교정되기 전에 `useEffect`가 먼저 실행되는 레이스였다 — 리다이렉트 판단을 렌더 시점 스냅샷이 아니라 effect 실행 시점의 `getToken()` 직접 읽기로 바꿔 해결했다. `(auth)/layout.tsx`는 원래 이 패턴이라 문제가 없었다.
 
 **테스트 체크리스트 (Playwright)**
-- [ ] 제목 + Tiptap 본문(굵게/목록 포함) 작성 → 저장 → 목록에 표시
-- [ ] 상세 진입 시 **저장한 본문 서식이 그대로 복원**됨
-- [ ] 수정 후 저장 → 목록에 변경 내용 반영
-- [ ] 제목 미입력 시 저장 차단
-- [ ] 존재하지 않는 `/todos/999999` 접속 → 목록으로 이동 + 안내 메시지
+- [x] 제목 미입력 시 저장 차단 — Zod 검증으로 "제목을 입력해주세요." 표시, 제출 안 됨을 확인
+- [x] 제목 + Tiptap 본문(굵게 포함) 작성 시 폼 상태·서식 반영 확인(`<strong>` 렌더), 저장 실패 시에도 입력값 유지·에러 배너 표시 확인
+- [x] 취소 버튼 → 목록 이동 확인
+- [x] `/todos/new`, `/todos/[id]` **하드 리로드**해도 오탐 리다이렉트 없이 정상 렌더/로딩 확인 (위 버그 수정 검증)
+- [ ] 저장 → 목록에 실제 표시, 상세 진입 시 본문 서식 복원, 수정 후 목록 반영, 존재하지 않는 `/todos/999999` 접속 시 `TODO_001` 404 → 안내 메시지까지의 전체 흐름은 실제 응답 데이터가 필요해 미검증
+
+**남은 일**: `todo-backend`를 JDK 21로 정상 기동한 뒤, 실제 생성/조회/수정 응답과 `TODO_001` 404 응답으로 위 미검증 시나리오를 확인한다.
 
 ### Task 031: 상태 토글·삭제 및 Framer Motion 인터랙션
 
