@@ -237,3 +237,39 @@ sudo journalctl -u todo-backend -f
 - [ ] 커스텀 도메인 사용 시 `https://`로 자물쇠 아이콘 정상 표시(인증서 유효)
 
 이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` Task 038을 실측 결과로 갱신한다.
+
+---
+
+## Task 039: 운영 도메인 기준 CORS·OAuth2 Redirect URI 갱신 및 보안 점검
+
+### 이미 코드로 확인된 부분 (Claude Code가 이번 세션에 검증 완료, 추가 조치 불필요)
+
+- **CORS 허용 오리진은 이미 하드코딩이 아니다.** `CorsConfig.java`가 `@Value("${app.frontend-url}")`로 `APP_FRONTEND_URL` 환경변수를 그대로 읽어 `setAllowedOrigins`에 쓴다 — 코드 수정 없이 **환경변수 값만 운영 도메인으로 채우면** 자동으로 반영된다(Task 037의 `/etc/todo-backend.env`에서 `APP_FRONTEND_URL`을 Task 038에서 확정한 Amplify 도메인으로 설정).
+- **쿠키 `Secure` 속성은 이미 켜져 있다.** `CookieOAuth2AuthorizationRequestRepository.java`가 `.secure(true)`로 고정되어 있다(Task 015에 이미 반영됨). HTTPS가 아닌 환경(로컬 http)에서도 최신 브라우저는 `localhost`를 예외로 취급해 개발에 지장이 없다.
+- **저장소에 시크릿 없음 — 재점검 결과 실제로는 문제가 있었고 고쳤다.** `todo-backend/src/main/resources/application.properties`가 `.gitignore`에 의해 **한 번도 커밋된 적이 없었음**을 발견했다. 내용 자체는 전부 `${ENV_VAR}` 플레이스홀더뿐이라 시크릿 노출은 아니었지만, 파일 자체가 없으면 새 클론에서 Spring이 설정을 못 읽어 기동이 안 되는 문제였다 — `.gitignore` 규칙을 지우고 파일을 커밋해 해결했다(README·PRD 12.1이 이 파일의 존재를 전제하고 있어 문서와도 이제 일치한다).
+
+### 사용자가 직접 해야 하는 부분 (AWS·Google/Kakao 콘솔 작업)
+
+1. **`APP_FRONTEND_URL` 확정** — Task 038에서 정한 Amplify 도메인(`https://main.xxxxx.amplifyapp.com` 또는 커스텀 도메인)을 Task 037의 `/etc/todo-backend.env`에 반영하고 `sudo systemctl restart todo-backend`.
+2. **Google Cloud Console** → OAuth 2.0 클라이언트 → 승인된 리디렉션 URI에 추가:
+   ```
+   https://<Task 037의 운영 백엔드 도메인>/login/oauth2/code/google
+   ```
+   (기존 로컬용 `http://localhost:8080/login/oauth2/code/google`은 남겨둬도 무방 — 로컬 개발이 계속 필요하면)
+3. **Kakao Developers 콘솔** → 카카오 로그인 → Redirect URI에 추가:
+   ```
+   https://<Task 037의 운영 백엔드 도메인>/login/oauth2/code/kakao
+   ```
+4. **HTTPS 전 구간 확인** — 백엔드 EC2 앞에 ALB/nginx 등으로 HTTPS 종단을 두었는지 확인한다(Task 037 가이드는 8080 평문 HTTP까지만 다뤘다 — **OAuth2 제공자는 HTTP 콜백을 거부할 수 있으므로 이 앞단 HTTPS 처리가 실제로 되어 있어야 한다.** ALB+ACM 인증서 또는 nginx+Let's Encrypt 중 택1).
+5. **최종 보안 점검**
+   - [ ] 운영 EC2의 `journalctl -u todo-backend`에 토큰·비밀번호가 평문으로 찍히지 않는지 확인(`logging.level.org.hibernate.SQL=debug`가 켜져 있어 SQL 파라미터가 로그에 남을 수 있다 — 운영에서는 `logging.level.org.hibernate.SQL=info`로 낮추는 것을 권장)
+   - [ ] `git log`·`git grep`으로 두 저장소에 시크릿이 없는지 최종 재확인(이번 세션에 백엔드는 확인 완료, 프론트는 `.env.local`이 애초에 gitignore되어 있어 안전)
+
+### 완료 후 확인할 것 (DoD)
+
+- [ ] 운영 프론트(Amplify)에서 로그인/회원가입 시도 시 브라우저 콘솔에 CORS 에러 없음
+- [ ] 운영 도메인에서 Google/Kakao 소셜 로그인 시도 → 정상적으로 `/oauth2/callback#token=...`으로 리다이렉트됨(`redirect_uri_mismatch` 에러가 뜨면 2·3단계의 URI 등록을 재확인)
+- [ ] 운영 환경에서 가입 → 로그인 → Todo 생성/조회/수정/삭제까지 수동으로 한 번 끝까지 확인
+- [ ] HTTPS 자물쇠 아이콘 정상(프론트·백엔드 모두)
+
+이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` Task 039와 M9 마일스톤을 실측 결과로 갱신한다.

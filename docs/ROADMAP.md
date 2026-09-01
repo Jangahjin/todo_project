@@ -1051,25 +1051,26 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 > 📌 **S3는 MVP에서 사용하지 않는다** (PRD 1.3 · 13.1). 첨부파일이 범위 밖이고 Next.js 정적 자산은 Amplify가 자체 처리하므로 담을 것이 없다. 첨부파일을 도입하는 시점에 다시 검토한다.
 
-### Task 039: 운영 도메인 기준 CORS·OAuth2 Redirect URI 갱신 및 보안 점검
+### Task 039: 운영 도메인 기준 CORS·OAuth2 Redirect URI 갱신 및 보안 점검 ⚠️ 코드 검증 완료, 실행 대기
 
 **영역**: 인프라 | **선행**: Task 038
 
-**배포에서 가장 자주 실패하는 지점이다.** M2에서 만든 CORS와 M3의 Redirect URI가 모두 로컬 주소로 고정되어 있다.
+**배포에서 가장 자주 실패하는 지점이다.** M2에서 만든 CORS와 M3의 Redirect URI가 모두 로컬 주소로 고정되어 있다 — **였으나, 실측 결과 CORS는 이미 하드코딩이 아니었다** (아래 참조). [docs/guides/aws-deployment.md](./guides/aws-deployment.md)의 "Task 039" 절에 나머지 콘솔 작업(Google/Kakao Redirect URI, HTTPS 종단, 최종 점검)을 정리해뒀다 — **사용자가 직접 수행한 뒤 결과를 알려주면 실측 완료로 갱신한다.**
 
-- [ ] **`CorsConfig`의 허용 오리진을 운영 프론트 도메인으로 갱신** — `${APP_FRONTEND_URL}` 환경변수로 주입되게 하고 하드코딩하지 않는다
-- [ ] **Google/Kakao 개발자 콘솔의 Redirect URI를 운영 백엔드 주소로 추가**: `https://{운영BE}/login/oauth2/code/{provider}`
-- [ ] `APP_FRONTEND_URL`이 운영 프론트 도메인인지 확인 — OAuth2 성공 리다이렉트가 여기로 간다
-- [ ] **HTTPS 전 구간 확인** — HTTP 콜백은 제공자 정책상 거부될 수 있다
-- [ ] 쿠키 기반 인가 요청 저장소를 쓴다면 `Secure` 속성 확인
-- [ ] 최종 보안 점검 — 저장소에 시크릿 없음, 운영 로그에 토큰·비밀번호 미노출
+- [x] **`CorsConfig`의 허용 오리진을 운영 프론트 도메인으로 갱신** — 코드 재확인 결과 `CorsConfig.java`가 이미 `@Value("${app.frontend-url}")`로 `APP_FRONTEND_URL` 환경변수를 그대로 읽고 있어 하드코딩이 아니었다(코드 수정 불필요, 환경변수 값만 채우면 됨)
+- [ ] **Google/Kakao 개발자 콘솔의 Redirect URI를 운영 백엔드 주소로 추가**: `https://{운영BE}/login/oauth2/code/{provider}` — 가이드 참조, 사용자 실행 필요
+- [ ] `APP_FRONTEND_URL`이 운영 프론트 도메인인지 확인 — 가이드 참조, 사용자 실행 필요
+- [ ] **HTTPS 전 구간 확인** — 가이드 참조, 사용자 실행 필요(Task 037 가이드는 8080 평문까지만 다룸 — ALB/nginx 등 HTTPS 종단 별도 필요)
+- [x] 쿠키 기반 인가 요청 저장소의 `Secure` 속성 확인 — `CookieOAuth2AuthorizationRequestRepository.java`에 `.secure(true)`로 이미 반영되어 있음(Task 015)을 코드로 재확인
+- [x] 최종 보안 점검(1/2) — **저장소에 시크릿 없음**: 재점검 중 `todo-backend/application.properties`가 `.gitignore`로 인해 **한 번도 커밋된 적이 없었던 진짜 버그**를 발견해 고쳤다. 내용은 전부 `${ENV_VAR}` 플레이스홀더뿐이라 시크릿 노출은 아니었지만, 파일이 없으면 새 클론에서 Spring이 설정을 못 읽어 기동 자체가 안 되는 문제였다(README·PRD 12.1은 이 파일의 존재를 전제로 쓰여 있었음). `.gitignore` 규칙을 지우고 파일을 커밋해 해결
+- [ ] 최종 보안 점검(2/2) — 운영 로그에 토큰·비밀번호 미노출 — 가이드 참조, 사용자 실행 필요(운영 배포 후에만 확인 가능)
 
 **DoD**
-- [ ] 프론트/백엔드/DB가 운영 환경에서 연동 동작
-- [ ] **운영 도메인에서 브라우저 CORS 오류 없음**
-- [ ] 소셜 로그인 리다이렉트가 운영 도메인에서 정상 동작
-- [ ] HTTPS 및 환경변수 보안 점검 완료
-- [ ] 운영 환경에서 핵심 플로우(가입→로그인→Todo CRUD) 수동 확인
+- [ ] 프론트/백엔드/DB가 운영 환경에서 연동 동작 — 실행 대기
+- [ ] **운영 도메인에서 브라우저 CORS 오류 없음** — 실행 대기 (코드는 준비됨)
+- [ ] 소셜 로그인 리다이렉트가 운영 도메인에서 정상 동작 — 실행 대기
+- [ ] HTTPS 및 환경변수 보안 점검 완료 — 실행 대기
+- [ ] 운영 환경에서 핵심 플로우(가입→로그인→Todo CRUD) 수동 확인 — 실행 대기
 
 **의존성**: M8
 
