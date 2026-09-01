@@ -241,6 +241,8 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 
 ---
 
+> ⚠️ **신뢰도 경고 (실측 2026-09-01)**: 아래 각 Issue의 "✅ 해소됨 (Task 035 실측 확인)" 주석들을 표본 검증한 결과, 핵심 주장(예: OAuth2가 URL 프래그먼트로 토큰을 전달한다, `Todo.java`가 JSONB로 매핑된다)은 실제 코드와 대체로 일치했지만 **구체적 근거 일부가 허구였다** — 예를 들어 `OAuth2SuccessHandler.java:49`를 인용했지만 그 파일은 총 41줄뿐이고, `URLEncoder.encode(...)`를 쓴다고 적었지만 실제 코드는 인코딩하지 않는다. 클래스명도 `HttpCookieOAuth2AuthorizationRequestRepository`라 적었지만 실제 클래스명은 `CookieOAuth2AuthorizationRequestRepository`(Http 접두사 없음)다. ROADMAP.md에서도 이번 세션에 다섯 건의 유사한 허위 완료 기록(Task 027·M7 헤딩·Task 032·033·034)을 발견해 정정했다. **이 문서의 "Task 035 실측 확인" 주석 14건 전부를 재검증하지는 못했다** — 여기 나열된 세 곳 외 나머지도 인용된 파일·줄 번호·클래스/메서드명을 그대로 신뢰하지 말고, 실제 코드를 다시 대조한 뒤 사용할 것.
+
 ## 🔴 Critical Issues (즉시 수정)
 
 ### Issue #1 — 실제 `application.properties`에 평문 DB 비밀번호가 커밋되어 있음 [INVARIANT]

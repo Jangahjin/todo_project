@@ -14,10 +14,10 @@
 - **shadcn/ui**: Radix UI 기반 컴포넌트 라이브러리 — ✅ 설치됨. style은 **`radix-nova`**, baseColor는 `neutral` (`components.json` 기준. new-york 아님)
 - **tw-animate-css**: 애니메이션 라이브러리 — ✅ 설치됨
 - **CSS Variables**: 동적 테마 시스템
-- **next-themes**: 다크모드 지원 — ⏳ **미설치. M5에서 설치**
+- **next-themes**: 다크모드 지원 — ❌ **미설치, 도입하지 않음**. M5(Task 020)에서 설치 대신 `providers/ThemeProvider.tsx`를 `useSyncExternalStore` 기반 커스텀 구현으로 대체했다(실측 2026-09-01, Task 035 재검증 — 이전 "M5에서 설치 예정" 서술은 M5가 끝난 지금 시점엔 stale이었다)
 - **prettier-plugin-tailwindcss**: 자동 클래스 정렬 — ⏳ **미설치** (도입 여부 미확정)
 
-> 아래 `next-themes` 예시는 M5에서 설치한 뒤 적용한다.
+> 아래 `next-themes` 예시는 참고용이며 실제로는 쓰지 않는다 — 실제 구현은 `todo_frontend/providers/ThemeProvider.tsx`를 참고할 것.
 
 ## 🚀 TailwindCSS v4 사용 규칙
 

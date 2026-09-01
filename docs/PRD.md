@@ -39,7 +39,7 @@
 | **Database** | PostgreSQL (스키마명: `TodoListDB`) | ✅ 완료 (M0에서 `todolistdb` 소문자 폴딩 실측 확인) |
 | **테스트 (BE)** | JUnit 5 + Spring Boot Test (MockMvc) | ✅ 완료 (M1 Task 007에서 인프라 구축 완료) |
 | **테스트 DB** | **로컬 PostgreSQL 테스트 스키마 `todolistdb_test`** | ✅ 완료 (M1 Task 007에서 구축 완료) |
-| **테스트 (FE)** | **Playwright** (E2E 전용) | ❌ **미설치** — **Task 023(M5)** 에서 설치 예정. 실측(2026-08-31) 정정: `package.json`에 없고 `playwright.config.ts`도 없음 |
+| **테스트 (FE)** | **Playwright** (E2E 전용) | ✅ **설치됨** — 실측(2026-09-01, Task 035 재검증): `@playwright/test` **1.62.1**, `playwright.config.ts`·`e2e/` 존재 확인 (Task 023) |
 | **배포** | AWS Amplify(FE), EC2(BE), RDS(DB) | ⏳ M9 |
 | **형상관리** | Git, GitHub | ✅ |
 
