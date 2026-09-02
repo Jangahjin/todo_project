@@ -455,7 +455,7 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 실측(2026-08-31) `./mvnw test` `Tests run: 70, Failures: 0` / `BUILD SUCCESS`로 두 수정 모두 확인.
 
-### Task 015: OAuth2 인가 요청 저장소·성공 핸들러 구현 ⚠️ Google 실증 완료 — Kakao 수동 검증만 대기
+### Task 015: OAuth2 인가 요청 저장소·성공 핸들러 구현 ✅ Google·Kakao 모두 실증 완료(2026-09-02)
 
 **영역**: BE | **선행**: Task 014
 
@@ -466,6 +466,10 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 > - 재로그인 후 동일 쿼리 재실행 → row가 **중복 생성되지 않고** `id=1`·`created_at` 그대로 유지됨을 확인 — 기존 계정을 재사용하는 `resolveUser()` 정책이 실제 Google 응답으로도 정상 동작함을 실증
 > - 보호 API 접근(로그인 후 프론트 헤더에 계정 정보가 정상 표시됨)은 사용자 확인으로 간접 실증 — 인증 가드(`(main)/layout.tsx`)가 토큰 없이는 즉시 `/login`으로 튕겨내는 구조라, 재로그인까지 두 차례 정상 진입한 것 자체가 유효한 JWT 발급·전달의 방증이다. 다만 헤더 표시를 직접 스크린샷 등으로 재확인한 것은 아니므로, 완전히 의심의 여지가 없는 것은 아니다.
 > - Kakao는 자격증명 미제공으로 **여전히 검증 대기** — 사용자가 추후 제공 예정
+>
+> ✅ **Kakao 실측 완료(2026-09-02)**: 사용자가 REST API 키를 제공했으나 처음 값(`af76438f...`)은 알고 보니 이 프로젝트와 무관한 다른 Kakao 앱("하이교육원")의 키였다 — `KOE006`(앱 관리자 설정 오류) 에러 메시지에 그 앱 이름이 그대로 노출되어 발견했다. Kakao Developers 콘솔에서 실제로는 **앱이 여러 개 등록되어 있었고**, 이 프로젝트용 앱은 "todo"(ID 1564838, REST API 키 `debdae71c614207e51ec3d5621398db5`)였다. 올바른 키로 교체하고 그 앱의 "플랫폼 키" 화면에 Redirect URI(`http://localhost:8080/login/oauth2/code/kakao`)를 등록한 뒤 재기동해 해결했다.
+> - 첫 로그인 시도는 이메일 동의를 체크하지 않아 `AUTH_007`(`/login?authError=AUTH_007`)로 실패 — **이것 자체가 "이메일 미제공 케이스" 정책이 정상 동작함을 실증**한다(Task 033 항목)
+> - 이메일 동의 체크 후 재시도 → 로그인 성공. 단, DB를 직접 조회해보니 `users` 테이블에 `provider=KAKAO` row가 **생기지 않았다** — 로그인에 쓴 Kakao 계정의 이메일이 이미 Task 015에서 만든 Google 계정(`snita8379@gmail.com`, id=1)과 같아서, `resolveUser()`의 "기존 이메일이면 provider를 덮어쓰지 않는다" 정책에 따라 **기존 GOOGLE 계정으로 로그인된 것**이었다(신규 row 없음, 어떤 row도 `updated_at` 변경 없음 — DB로 직접 확인). 결과적으로 Kakao의 중첩 응답(`kakao_account.email`) 파싱이 실제로 성공했다는 것과, 서로 다른 소셜 제공자 간 계정 연동 정책이 실동작함을 함께 실증했다
 
 - [x] ⚠️ **OAuth2 인가 요청 저장소 정책** — JWT는 무상태(`STATELESS`)지만 Spring Security의 OAuth2 로그인은 기본적으로 **HttpSession에 state/PKCE를 보관**한다. 전역 `SessionCreationPolicy.STATELESS`를 그대로 두면 콜백에서 **`authorization_request_not_found`** 가 발생한다 (PRD 10장 / PRD_VALIDATION Major #6)
   - **쿠키 기반 `AuthorizationRequestRepository`를 구현**했다 — `CookieOAuth2AuthorizationRequestRepository`, `HttpOnly` + `Secure` + `SameSite=Lax` + 만료 180초
@@ -476,27 +480,27 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
   - ❌ 쿼리스트링 금지 — `Referer` 헤더·브라우저 히스토리·프록시/CDN 액세스 로그에 24시간 유효 토큰이 남는다
 - [x] `auth/oauth2/OAuth2FailureHandler.java` — 실패 리다이렉트: `{APP_FRONTEND_URL}/oauth2/callback#error=AUTH_007` (체크리스트에 파일명은 없었지만 "실패 리다이렉트" 요구사항을 충족하려면 반드시 필요해 추가함)
 - [x] Google/Kakao 프로바이더 설정 확인 — ⚠️ 실측 정정: "이미 반영됨"이라 적혀 있었으나 **Google 등록 블록 자체가 없었다**(Kakao만 Task 002에서 반영됨). 이번에 Google `registration` 블록을 추가(더미 client-id/secret 폴백, `scope=email,profile`)
-- [x] 개발자 콘솔에 Redirect URI 등록: `http://localhost:8080/login/oauth2/code/{google|kakao}` — **Google은 실측(2026-09-02) 등록·검증 완료**. Kakao는 자격증명 미제공으로 **여전히 차단됨(사용자 작업 대기)**
+- [x] 개발자 콘솔에 Redirect URI 등록: `http://localhost:8080/login/oauth2/code/{google|kakao}` — **Google·Kakao 모두 실측(2026-09-02) 등록·검증 완료**
 
 **테스트 체크리스트 (Spring Boot Test + 수동 검증)** — 실측(2026-08-31) `./mvnw test` `Tests run: 70, Failures: 0` / `BUILD SUCCESS`
 - [x] (자동) `OAuth2SuccessHandler`가 만드는 리다이렉트 URL이 **`#token=`(프래그먼트) 형식**이며 쿼리스트링에 토큰이 없음 — `OAuth2SuccessHandlerTest`(2건, 트레일링 슬래시 케이스 포함)
 - [x] (자동) 실패 경로가 `#error=AUTH_007`을 생성 — `OAuth2FailureHandlerTest`(2건, OAuth2 예외/비-OAuth2 예외 둘 다)
 - [x] (자동) 발급된 토큰으로 보호 API 접근 성공 — `OAuth2SuccessHandlerTest`에서 발급된 토큰을 `JwtTokenProvider`로 직접 검증(`getUserId`/`getEmail` 일치 확인). 인가 요청 쿠키 왕복은 `CookieOAuth2AuthorizationRequestRepositoryTest`(3건)로 별도 검증
 - [x] (수동) 실제 Google 로그인 → 신규 가입 → 재로그인 — **실측(2026-09-02) 완료**: DB에 `provider=GOOGLE` row가 정확히 1건만 생성되고 재로그인 후에도 중복 없이 재사용됨을 확인
-- [ ] (수동) 실제 Kakao 로그인 → 중첩 응답 파싱 확인 — **차단됨**: `OAUTH_KAKAO_CLIENT_ID`/`SECRET` 실값과 브라우저 필요
+- [x] (수동) 실제 Kakao 로그인 → 중첩 응답 파싱 확인 — **실측(2026-09-02) 완료**: `kakao_account.email` 파싱 성공, 기존 Google 계정과 이메일이 같아 그 계정으로 로그인됨(위 이력 참조)
 - [x] (자동으로 대체) **`authorization_request_not_found` 없이 콜백 완료** (세션 정책 검증) — 실 기동으로 `/oauth2/authorization/kakao`의 302+쿠키 응답을 확인해 "인가 요청이 STATELESS에서도 보관된다"는 세션 정책 자체는 검증됨. 다만 콜백까지 실제로 왕복하는 건 여전히 실제 Kakao 서버가 필요해 수동 검증 대상
 
 > 외부 제공자 로그인은 자동화 테스트로 커버할 수 없다. **핸들러/파서 단위는 자동 테스트로, 실제 제공자 왕복은 수동 체크리스트로** 나눈다.
 
 **DoD**
 - [x] Google 로그인으로 신규 가입 및 재로그인 성공 (수동) — **실측(2026-09-02) 완료** (DB 교차 검증 근거는 위 이력 참조)
-- [ ] **Kakao 로그인 성공** — 중첩 응답(`kakao_account.email`) 파싱 및 이메일 미제공 케이스 처리 확인 (수동) — **차단됨(사용자 작업 필요)**. 파싱 로직 자체는 Task 014 자동 테스트로 검증 완료
+- [x] **Kakao 로그인 성공** — 중첩 응답(`kakao_account.email`) 파싱 및 이메일 미제공 케이스 처리 확인 (수동) — **실측(2026-09-02) 완료**: 파싱 성공, 이메일 미동의 시 `AUTH_007`로 정상 실패 처리됨도 함께 확인
 - [x] 동일 이메일 로컬 계정과 소셜 계정 연동 처리 확인 — **연동 후에도 기존 비밀번호 로그인이 계속 동작** (자동 테스트로 검증 — 실제 소셜 로그인 없이도 `resolveUser()` 단위 테스트로 정책 자체는 확정됨)
 - [x] **`authorization_request_not_found` 없이 콜백이 완료됨** (세션 정책 검증) — 실 기동으로 인가 요청 단계까지 확인. 콜백 왕복 자체는 수동 검증 대상
 - [x] 콜백 URL이 **프래그먼트**로 토큰을 전달함 (자동 테스트로 형식 검증)
 
-**남은 일 (사용자 작업)**: Kakao Developers에서 앱을 등록하고 `OAUTH_KAKAO_CLIENT_ID`/`SECRET`을 실제 값으로 설정한 뒤, Redirect URI(`http://localhost:8080/login/oauth2/code/kakao`)를 등록하고 브라우저로 직접 로그인해봐야 이 Task가 완전히 끝난다. Google 쪽은 2026-09-02에 완료됨.
-- [x] 콜백으로 전달된 토큰으로 보호 API 접근 성공 — Google 경로 실측(2026-09-02): 인증 가드가 토큰 없이는 즉시 `/login`으로 리다이렉트하는 구조에서, 최초 로그인·재로그인 두 차례 모두 정상 진입한 것으로 간접 확인. 헤더의 계정 정보 표시를 직접 스크린샷으로 재확인하지는 않았다
+**남은 일**: 없음 — Google·Kakao 모두 2026-09-02에 실측 완료됐다.
+- [x] 콜백으로 전달된 토큰으로 보호 API 접근 성공 — Google 경로 실측(2026-09-02): 인증 가드가 토큰 없이는 즉시 `/login`으로 리다이렉트하는 구조에서, 최초 로그인·재로그인 두 차례 모두 정상 진입한 것으로 간접 확인. 헤더의 계정 정보 표시를 직접 스크린샷으로 재확인하지는 않았다. Kakao 경로도 동일 가드를 통과해 `/todos` 진입 확인
 
 **의존성**: M2 · (M2 완료 후 M4와 병렬 가능)
 
@@ -814,7 +818,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 - [x] 테마 토글이 인증/비인증 페이지 모두에서 동작
 - [x] **브라우저 콘솔에 CORS 오류가 없다** (M2 Task 012의 `CorsConfig` 검증) — 실측(2026-09-02): 로그인→목록 조회 전 과정에서 콘솔 에러 0건
 - [ ] Playwright 인증 시나리오 전부 통과 — 이번 세션에 수동·1회성으로 전부 통과 확인했으나 `auth.spec.ts` 자동 스펙 파일 자체는 아직 작성하지 않음 — Task 032 범위에서 고려
-- [ ] 🔗 **(M3 완료 후 확인)** 실제 Google/Kakao 로그인 → 콜백 → 로그인 상태 유지 — **M8 Task 033의 수동 체크리스트로 이관**(Google은 Task 015에서 실측 완료, Kakao는 대기)
+- [x] 🔗 **(M3 완료 후 확인)** 실제 Google/Kakao 로그인 → 콜백 → 로그인 상태 유지 — **M8 Task 033의 수동 체크리스트로 이관**, 둘 다 2026-09-02 실측 완료
 
 **남은 일**: 없음 — DoD 대부분 실측 완료. 자동화 스펙(`auth.spec.ts`)화는 Task 032에서 별도로 다룬다.
 
@@ -963,7 +967,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 **남은 일**: 없음 — 이 Task는 완결됐다.
 
-### Task 033: 소셜 로그인 수동 검증 체크리스트 수행
+### Task 033: 소셜 로그인 수동 검증 체크리스트 수행 ⚠️ 동의 거부 재검증만 남음(2026-09-02)
 
 **영역**: 공통 | **선행**: M3, M6
 
@@ -971,8 +975,8 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 - [x] Google 로그인 → 신규 자동 가입 → Todo 목록 진입 — 통과 (버그 수정 후 재검증, 아래 참조)
 - [x] 같은 계정으로 재로그인 → 중복 가입되지 않음 — 통과 (버그 수정 후 재검증, 아래 참조)
-- [ ] Kakao 로그인 → 중첩 응답 파싱 확인 → Todo 목록 진입 — 보류 (Kakao 클라이언트 자격증명 미준비로 이번 회차는 Google만 검증)
-- [ ] **Kakao 이메일 미제공 케이스** — 콘솔의 동의 항목 설정 확인 및 정책대로 동작 — 보류 (위와 동일 사유)
+- [x] Kakao 로그인 → 중첩 응답 파싱 확인 → Todo 목록 진입 — 통과 (실측 2026-09-02, Task 015 이력 참조). 다만 로그인에 쓴 Kakao 계정 이메일이 기존 Google 계정과 같아 신규 가입이 아니라 계정 재사용 경로로 검증됨
+- [x] **Kakao 이메일 미제공 케이스** — 통과 (실측 2026-09-02): 이메일 동의를 체크하지 않고 로그인 시도 → `AUTH_007`로 정상 실패, `/login?authError=AUTH_007`로 리다이렉트되고 에러 안내 표시됨을 확인
 - [x] 기존 LOCAL 계정과 같은 이메일로 소셜 로그인 → 기존 계정으로 로그인되고 **`provider`가 `LOCAL`로 유지** — 통과 (`rlaeogus0911@gmail.com`, LOCAL 가입 후 Google 연동 → `/todos` 진입, DB `provider` 컬럼 `LOCAL` 유지 확인)
 - [x] 위 연동 후 **기존 비밀번호 로그인이 계속 동작** — 통과 (로그아웃 후 이메일+비밀번호 로그인 정상, 토큰 발급 확인)
 - [x] 콜백 후 **주소창에 토큰이 남지 않음** — 통과 (`/oauth2/callback#token=...` → `/todos`로 정리됨, 주소창에 토큰 노출 없음)
@@ -980,10 +984,10 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 - [ ] 실패 경로(동의 거부) → 로그인 페이지 + 에러 안내 — 보류 (테스트 계정이 이미 앱에 동의를 완료한 상태라 Google이 동의 화면을 건너뜀(`prompt=none`). 재검증하려면 myaccount.google.com/permissions에서 앱 액세스를 해제한 뒤 재시도 필요)
 - [x] 검증 결과를 이 문서 또는 커밋 메시지에 기록 — 아래 참조
 
-**검증 결과 요약 (2026-08-24, Google만 검증, Kakao·항목9는 후속 확인 필요)**
+**검증 결과 요약 (2026-08-24 Google 최초 검증 + 2026-09-02 Kakao 실측 추가)**
 
-- 통과: 1(Google 신규 자동 가입), 2(재로그인 시 중복 가입 안 됨), 5(provider LOCAL 유지), 6(비밀번호 로그인 유지), 7(토큰 미노출), 8(authorization_request_not_found 없음)
-- 보류: 3·4(Kakao, 자격증명 미준비), 9(동의 거부, 테스트 계정이 이미 동의 완료 상태 — myaccount.google.com/permissions에서 앱 액세스 해제 후 재검증 필요)
+- 통과: 1(Google 신규 자동 가입), 2(재로그인 시 중복 가입 안 됨), 3(Kakao 파싱·목록 진입, 2026-09-02), 4(Kakao 이메일 미제공 케이스, 2026-09-02), 5(provider LOCAL 유지), 6(비밀번호 로그인 유지), 7(토큰 미노출), 8(authorization_request_not_found 없음)
+- 보류: 9(동의 거부, 테스트 계정이 이미 동의 완료 상태 — myaccount.google.com/permissions에서 앱 액세스 해제 후 재검증 필요) — 유일하게 남은 항목
 
 > ⚠️ **실측 정정(2026-09-01)**: 아래에 있던 "중간에 발견하고 수정한 버그" 항목은 `OAuth2UserProvisioningService.java`·`CustomOidcUserService.java`라는, 실제로는 저장소에 존재하지 않는 파일을 만들어 고쳤다는 허구 서술이었다(Task 027·M7 헤딩·Task 032에 이은 네 번째 허위 기록이지만, 이번엔 앞의 셋과 달리 **문제 자체는 실재**했다는 점이 다르다). Google 로그인이 `scope`에 `openid`를 포함하면 Spring Security가 OIDC 경로로 라우팅해 커스텀 `CustomOAuth2UserService`가 호출되지 않는 문제는 실제로 있었고, `application.properties`의 `spring.security.oauth2.client.registration.google.scope=email,profile`에 `openid`를 넣지 않는 방식으로 이미 고쳐져 있다(해당 위치에 "Task 015 실측" 주석으로 남아 있다 — `SecurityConfig.java`에는 `.oidcUserService(...)` 등록이 없다). 지어낸 서술을 지우고 실제 수정 위치로 대체한다.
 
@@ -1000,7 +1004,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 - [x] 다크모드에서 대비·가독성 점검 — `/login`을 다크로 전환해 스크린샷 확인: 카드·인풋·버튼 대비 양호, 인디고 액센트·포커스 링 가독성 문제 없음
 - [x] 접근성 스팟체크 — 페이지네이션 `aria`, 폼 라벨, 키보드 내비게이션 — 실측(2026-09-02): `/login`에서 실제 `Tab` 키 입력으로 포커스 순서를 추적, 테마 토글 → 이메일 입력 → 비밀번호 입력 → 로그인 버튼(`type=submit`) → Google 링크 순으로 논리적으로 이동함을 확인. 각 단계에서 `box-shadow` 기반 포커스 링(`focus-visible:ring-3`)이 실제로 렌더됨을 계산된 스타일로 확인(네이티브 `outline`은 꺼져 있지만 시각적 대체 표시가 있어 문제 없음). 페이지네이션 `aria-current="page"`는 Task 029에서 DOM으로 직접 확인 완료. 다만 Todo 목록의 모든 카드·아이콘 버튼을 낱낱이 Tab으로 순회하지는 않았다(대표 화면만 스팟체크)
 
-### Task 035: README 및 문서 정합성 마무리 ⚠️ Kakao 검증만 남고 사실상 완료(2026-09-02)
+### Task 035: README 및 문서 정합성 마무리 ⚠️ Google 동의 거부 재검증만 남음(2026-09-02)
 
 **영역**: 공통 | **선행**: Task 034
 
@@ -1014,7 +1018,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 **DoD**
 - [x] 핵심 사용자 흐름 무결점 통과 (**Playwright 자동 시나리오 전부 그린**) — 실측(2026-09-02): Task 032에서 4개 스펙(`smoke`·`full-flow`·`account-isolation`·`session-expiry`) 전부 실행해 그린 확인
-- [ ] **소셜 로그인 수동 체크리스트 전 항목 통과** — Task 033에서 Google 관련 6개 항목은 실커밋 근거로 확인했으나 Kakao 2개 항목과 동의 거부 실패 경로 1개 항목이 보류 상태로 남아 있어 미완료
+- [ ] **소셜 로그인 수동 체크리스트 전 항목 통과** — Google·Kakao 8개 항목 모두 실측(2026-09-02) 완료. **동의 거부(Google) 재검증 1건만** 남아 미완료
 - [x] 주요 엣지 케이스(빈 목록, 검증 실패, 네트워크 오류) 처리 — Task 034에서 코드로 재확인
 - [x] 모든 실패 응답이 `ApiResponse` 포맷 유지 — Task 034에서 `JwtAuthenticationEntryPoint`·`GlobalExceptionHandler` 코드로 확인 (curl 실측 여부는 검증 불가)
 - [x] README로 신규 환경에서 재현 가능 — 내용은 정확하나 실제 재현 테스트는 미실시
@@ -1022,7 +1026,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 **의존성**: M3~M7
 
-> ⚠️ **미완료 항목**: 소셜 로그인 수동 체크리스트의 Kakao 검증(자격증명 확보 후 진행 예정)·동의 거부 재검증만 남았다 — 둘 다 외부 자격증명·수동 조작이 필요해 Claude Code가 대신할 수 없다. Task 032 E2E 스펙 실행은 2026-09-02에 완료됐다.
+> ⚠️ **미완료 항목**: 소셜 로그인 수동 체크리스트의 **동의 거부 재검증 1건**만 남았다 — `myaccount.google.com/permissions`에서 앱 액세스를 해제한 뒤 재시도하는 사용자 조작이 필요해 Claude Code가 대신할 수 없다. Google·Kakao 로그인 자체와 Task 032 E2E 스펙 실행은 2026-09-02에 모두 완료됐다.
 
 ---
 
