@@ -455,11 +455,17 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
 
 실측(2026-08-31) `./mvnw test` `Tests run: 70, Failures: 0` / `BUILD SUCCESS`로 두 수정 모두 확인.
 
-### Task 015: OAuth2 인가 요청 저장소·성공 핸들러 구현 ⚠️ 자동화 가능 범위 완료 — 실제 제공자 수동 검증은 대기
+### Task 015: OAuth2 인가 요청 저장소·성공 핸들러 구현 ⚠️ Google 실증 완료 — Kakao 수동 검증만 대기
 
 **영역**: BE | **선행**: Task 014
 
 > ⚠️ 이 Task의 DoD 중 "실제 Google/Kakao 로그인 성공"은 **진짜 OAuth2 앱 등록(클라이언트 ID/시크릿)과 브라우저 수동 조작이 필요**해 에이전트가 완결할 수 없다. 자동화 가능한 부분(코드·핸들러·형식 검증)은 전부 구현·테스트했고, 실 기동으로 `authorization_request_not_found`가 나지 않음도 확인했다.
+>
+> ✅ **실측 완료(2026-09-02)**: 사용자가 Google Cloud Console에서 발급받은 실제 Client ID/Secret을 제공(`~/.bashrc`에 `OAUTH_GOOGLE_CLIENT_ID`/`OAUTH_GOOGLE_CLIENT_SECRET`로 등록, 저장소에는 커밋하지 않음)하고 Redirect URI(`http://localhost:8080/login/oauth2/code/google`)를 Console에 직접 등록. 최초 시도는 Google Cloud의 2단계 인증(2SV) 의무화(2026-08-29~) 때문에 Console 자체가 막혀 있었으나 사용자가 MFA 설정 후 해결. 이후 브라우저로 실제 Google 로그인을 두 차례(최초 가입 + 재로그인) 수행했고, 다음을 DB로 직접 교차 검증했다:
+> - 최초 로그인 후 `SELECT ... FROM users WHERE provider='GOOGLE'` → `id=1, email=snita8379@gmail.com, provider=GOOGLE, provider_id=112317872036714181504, created_at=2026-09-02 15:45:20` 신규 row 생성 확인
+> - 재로그인 후 동일 쿼리 재실행 → row가 **중복 생성되지 않고** `id=1`·`created_at` 그대로 유지됨을 확인 — 기존 계정을 재사용하는 `resolveUser()` 정책이 실제 Google 응답으로도 정상 동작함을 실증
+> - 보호 API 접근(로그인 후 프론트 헤더에 계정 정보가 정상 표시됨)은 사용자 확인으로 간접 실증 — 인증 가드(`(main)/layout.tsx`)가 토큰 없이는 즉시 `/login`으로 튕겨내는 구조라, 재로그인까지 두 차례 정상 진입한 것 자체가 유효한 JWT 발급·전달의 방증이다. 다만 헤더 표시를 직접 스크린샷 등으로 재확인한 것은 아니므로, 완전히 의심의 여지가 없는 것은 아니다.
+> - Kakao는 자격증명 미제공으로 **여전히 검증 대기** — 사용자가 추후 제공 예정
 
 - [x] ⚠️ **OAuth2 인가 요청 저장소 정책** — JWT는 무상태(`STATELESS`)지만 Spring Security의 OAuth2 로그인은 기본적으로 **HttpSession에 state/PKCE를 보관**한다. 전역 `SessionCreationPolicy.STATELESS`를 그대로 두면 콜백에서 **`authorization_request_not_found`** 가 발생한다 (PRD 10장 / PRD_VALIDATION Major #6)
   - **쿠키 기반 `AuthorizationRequestRepository`를 구현**했다 — `CookieOAuth2AuthorizationRequestRepository`, `HttpOnly` + `Secure` + `SameSite=Lax` + 만료 180초
@@ -470,27 +476,27 @@ Task 012에서 `NoResourceFoundException`/`ErrorResponseException`을 개별 나
   - ❌ 쿼리스트링 금지 — `Referer` 헤더·브라우저 히스토리·프록시/CDN 액세스 로그에 24시간 유효 토큰이 남는다
 - [x] `auth/oauth2/OAuth2FailureHandler.java` — 실패 리다이렉트: `{APP_FRONTEND_URL}/oauth2/callback#error=AUTH_007` (체크리스트에 파일명은 없었지만 "실패 리다이렉트" 요구사항을 충족하려면 반드시 필요해 추가함)
 - [x] Google/Kakao 프로바이더 설정 확인 — ⚠️ 실측 정정: "이미 반영됨"이라 적혀 있었으나 **Google 등록 블록 자체가 없었다**(Kakao만 Task 002에서 반영됨). 이번에 Google `registration` 블록을 추가(더미 client-id/secret 폴백, `scope=email,profile`)
-- [ ] 개발자 콘솔에 Redirect URI 등록: `http://localhost:8080/login/oauth2/code/{google|kakao}` — **차단됨(사용자 작업)**: 실제 Google Cloud Console·Kakao Developers 계정이 필요하다
+- [x] 개발자 콘솔에 Redirect URI 등록: `http://localhost:8080/login/oauth2/code/{google|kakao}` — **Google은 실측(2026-09-02) 등록·검증 완료**. Kakao는 자격증명 미제공으로 **여전히 차단됨(사용자 작업 대기)**
 
 **테스트 체크리스트 (Spring Boot Test + 수동 검증)** — 실측(2026-08-31) `./mvnw test` `Tests run: 70, Failures: 0` / `BUILD SUCCESS`
 - [x] (자동) `OAuth2SuccessHandler`가 만드는 리다이렉트 URL이 **`#token=`(프래그먼트) 형식**이며 쿼리스트링에 토큰이 없음 — `OAuth2SuccessHandlerTest`(2건, 트레일링 슬래시 케이스 포함)
 - [x] (자동) 실패 경로가 `#error=AUTH_007`을 생성 — `OAuth2FailureHandlerTest`(2건, OAuth2 예외/비-OAuth2 예외 둘 다)
 - [x] (자동) 발급된 토큰으로 보호 API 접근 성공 — `OAuth2SuccessHandlerTest`에서 발급된 토큰을 `JwtTokenProvider`로 직접 검증(`getUserId`/`getEmail` 일치 확인). 인가 요청 쿠키 왕복은 `CookieOAuth2AuthorizationRequestRepositoryTest`(3건)로 별도 검증
-- [ ] (수동) 실제 Google 로그인 → 신규 가입 → 재로그인 — **차단됨**: `OAUTH_GOOGLE_CLIENT_ID`/`SECRET` 실값과 브라우저 필요
+- [x] (수동) 실제 Google 로그인 → 신규 가입 → 재로그인 — **실측(2026-09-02) 완료**: DB에 `provider=GOOGLE` row가 정확히 1건만 생성되고 재로그인 후에도 중복 없이 재사용됨을 확인
 - [ ] (수동) 실제 Kakao 로그인 → 중첩 응답 파싱 확인 — **차단됨**: `OAUTH_KAKAO_CLIENT_ID`/`SECRET` 실값과 브라우저 필요
 - [x] (자동으로 대체) **`authorization_request_not_found` 없이 콜백 완료** (세션 정책 검증) — 실 기동으로 `/oauth2/authorization/kakao`의 302+쿠키 응답을 확인해 "인가 요청이 STATELESS에서도 보관된다"는 세션 정책 자체는 검증됨. 다만 콜백까지 실제로 왕복하는 건 여전히 실제 Kakao 서버가 필요해 수동 검증 대상
 
 > 외부 제공자 로그인은 자동화 테스트로 커버할 수 없다. **핸들러/파서 단위는 자동 테스트로, 실제 제공자 왕복은 수동 체크리스트로** 나눈다.
 
 **DoD**
-- [ ] Google 로그인으로 신규 가입 및 재로그인 성공 (수동) — **차단됨(사용자 작업 필요)**
+- [x] Google 로그인으로 신규 가입 및 재로그인 성공 (수동) — **실측(2026-09-02) 완료** (DB 교차 검증 근거는 위 이력 참조)
 - [ ] **Kakao 로그인 성공** — 중첩 응답(`kakao_account.email`) 파싱 및 이메일 미제공 케이스 처리 확인 (수동) — **차단됨(사용자 작업 필요)**. 파싱 로직 자체는 Task 014 자동 테스트로 검증 완료
 - [x] 동일 이메일 로컬 계정과 소셜 계정 연동 처리 확인 — **연동 후에도 기존 비밀번호 로그인이 계속 동작** (자동 테스트로 검증 — 실제 소셜 로그인 없이도 `resolveUser()` 단위 테스트로 정책 자체는 확정됨)
 - [x] **`authorization_request_not_found` 없이 콜백이 완료됨** (세션 정책 검증) — 실 기동으로 인가 요청 단계까지 확인. 콜백 왕복 자체는 수동 검증 대상
 - [x] 콜백 URL이 **프래그먼트**로 토큰을 전달함 (자동 테스트로 형식 검증)
 
-**남은 일 (사용자 작업)**: Google Cloud Console·Kakao Developers에서 앱을 등록하고 `OAUTH_GOOGLE_CLIENT_ID`/`SECRET`·`OAUTH_KAKAO_CLIENT_ID`/`SECRET`을 실제 값으로 설정한 뒤, Redirect URI(`http://localhost:8080/login/oauth2/code/{google|kakao}`)를 등록하고 브라우저로 직접 로그인해봐야 이 Task가 완전히 끝난다.
-- [ ] 콜백으로 전달된 토큰으로 보호 API 접근 성공
+**남은 일 (사용자 작업)**: Kakao Developers에서 앱을 등록하고 `OAUTH_KAKAO_CLIENT_ID`/`SECRET`을 실제 값으로 설정한 뒤, Redirect URI(`http://localhost:8080/login/oauth2/code/kakao`)를 등록하고 브라우저로 직접 로그인해봐야 이 Task가 완전히 끝난다. Google 쪽은 2026-09-02에 완료됨.
+- [x] 콜백으로 전달된 토큰으로 보호 API 접근 성공 — Google 경로 실측(2026-09-02): 인증 가드가 토큰 없이는 즉시 `/login`으로 리다이렉트하는 구조에서, 최초 로그인·재로그인 두 차례 모두 정상 진입한 것으로 간접 확인. 헤더의 계정 정보 표시를 직접 스크린샷으로 재확인하지는 않았다
 
 **의존성**: M2 · (M2 완료 후 M4와 병렬 가능)
 
