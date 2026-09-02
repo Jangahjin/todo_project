@@ -981,13 +981,13 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 - [x] 위 연동 후 **기존 비밀번호 로그인이 계속 동작** — 통과 (로그아웃 후 이메일+비밀번호 로그인 정상, 토큰 발급 확인)
 - [x] 콜백 후 **주소창에 토큰이 남지 않음** — 통과 (`/oauth2/callback#token=...` → `/todos`로 정리됨, 주소창에 토큰 노출 없음)
 - [x] `authorization_request_not_found`가 발생하지 않음 — 통과 (전 과정에서 쿠키 기반 AuthorizationRequestRepository 정상 동작, 관련 에러 없음)
-- [ ] 실패 경로(동의 거부) → 로그인 페이지 + 에러 안내 — 보류 (테스트 계정이 이미 앱에 동의를 완료한 상태라 Google이 동의 화면을 건너뜀(`prompt=none`). 재검증하려면 myaccount.google.com/permissions에서 앱 액세스를 해제한 뒤 재시도 필요)
+- [ ] 실패 경로(동의 거부) → 로그인 페이지 + 에러 안내 — **보류(2026-09-02 재시도했으나 계속 보류)**. `myaccount.google.com/permissions`에서 앱 액세스를 해제하려 했으나, 검색·필터 해제 후에도 우리 앱이 "연결된 앱" 목록 자체에 나타나지 않았다(Google Cloud OAuth 동의 화면이 아직 "테스트" 게시 상태라 이 화면에 다르게 취급되는 것으로 추정 — 확실히 검증된 문서는 없음). 대안으로 한 번도 로그인한 적 없는 별도 Google 계정으로 시도해 자연스럽게 동의 화면을 띄우는 방법을 제안했으나, 사용할 수 있는 계정이 없어 **사용자 결정으로 보류 유지**. 실패 핸들러(`OAuth2FailureHandler`) 자체의 `#error=AUTH_007` 생성 로직은 자동 테스트로 이미 검증되어 있어(Task 015), 리스크는 낮다고 판단
 - [x] 검증 결과를 이 문서 또는 커밋 메시지에 기록 — 아래 참조
 
 **검증 결과 요약 (2026-08-24 Google 최초 검증 + 2026-09-02 Kakao 실측 추가)**
 
 - 통과: 1(Google 신규 자동 가입), 2(재로그인 시 중복 가입 안 됨), 3(Kakao 파싱·목록 진입, 2026-09-02), 4(Kakao 이메일 미제공 케이스, 2026-09-02), 5(provider LOCAL 유지), 6(비밀번호 로그인 유지), 7(토큰 미노출), 8(authorization_request_not_found 없음)
-- 보류: 9(동의 거부, 테스트 계정이 이미 동의 완료 상태 — myaccount.google.com/permissions에서 앱 액세스 해제 후 재검증 필요) — 유일하게 남은 항목
+- 보류: 9(동의 거부 — 2026-09-02 재시도했으나 앱이 "연결된 앱" 목록에 없어 액세스 해제 불가, 대체 테스트 계정도 없어 사용자 결정으로 계속 보류) — 유일하게 남은 항목
 
 > ⚠️ **실측 정정(2026-09-01)**: 아래에 있던 "중간에 발견하고 수정한 버그" 항목은 `OAuth2UserProvisioningService.java`·`CustomOidcUserService.java`라는, 실제로는 저장소에 존재하지 않는 파일을 만들어 고쳤다는 허구 서술이었다(Task 027·M7 헤딩·Task 032에 이은 네 번째 허위 기록이지만, 이번엔 앞의 셋과 달리 **문제 자체는 실재**했다는 점이 다르다). Google 로그인이 `scope`에 `openid`를 포함하면 Spring Security가 OIDC 경로로 라우팅해 커스텀 `CustomOAuth2UserService`가 호출되지 않는 문제는 실제로 있었고, `application.properties`의 `spring.security.oauth2.client.registration.google.scope=email,profile`에 `openid`를 넣지 않는 방식으로 이미 고쳐져 있다(해당 위치에 "Task 015 실측" 주석으로 남아 있다 — `SecurityConfig.java`에는 `.oidcUserService(...)` 등록이 없다). 지어낸 서술을 지우고 실제 수정 위치로 대체한다.
 
