@@ -937,7 +937,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 **목표**: 전체 시나리오를 자동/수동으로 점검하고 문서를 정리한다.
 
-### Task 032: 전체 사용자 플로우 E2E 자동화 (Playwright) ⚠️ 부분 완료
+### Task 032: 전체 사용자 플로우 E2E 자동화 (Playwright) ✅ 완료(2026-09-02)
 
 **영역**: 공통 | **선행**: M6, M7
 
@@ -949,14 +949,19 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 - [x] 세션 만료 시나리오 — 정상 로그인 후 토큰을 위조 값으로 바꿔치기해 API가 401(AUTH_005)을 반환하는 실제 경로를 태움 → `apiFetch`가 토큰 삭제 + 로그인 페이지 이동 — `e2e/session-expiry.spec.ts`
 - [x] `npm run lint` + `npx tsc --noEmit` + `npm run build` 통과 확인
 
-**테스트 체크리스트 (Playwright)**
-- [ ] 전체 플로우 시나리오 그린 — **미실행**. 아래 "남은 일" 참조
-- [ ] 계정 격리 시나리오 그린 — **미실행**
-- [ ] 세션 만료 시나리오 그린 — **미실행**
+**테스트 체크리스트 (Playwright)** — 실측(2026-09-02) `npm run test:e2e` 전체 실행
+- [x] 전체 플로우 시나리오 그린 — `full-flow.spec.ts` 통과(13.2s)
+- [x] 계정 격리 시나리오 그린 — `account-isolation.spec.ts` 통과(15.5s)
+- [x] 세션 만료 시나리오 그린 — `session-expiry.spec.ts` 통과(3.2s, 이전에도 통과)
+- [x] `smoke.spec.ts`도 함께 통과(0.8s) — **4개 스펙 전부 그린**
 
-**왜 미실행인가**: `playwright.config.ts` 상단 주석대로 이 3개 스펙은 인증·Todo API를 모킹하지 않고 실제 `todo-backend`와 통신하는 정책이다. 이번 세션에서 `todo-backend`를 직접 살펴보니 CLAUDE.md 1.1의 "스캐폴드만 존재" 기술과 달리 Controller·Service·Security·JWT·OAuth2까지 실질적으로 구현되어 있었고 JDK 21도 활성 상태였지만, PostgreSQL이 기동되어 있지 않고 `DB_PASSWORD`·`JWT_SECRET`(둘 다 CLAUDE.md 규칙 9에 따라 커밋되지 않는 진짜 시크릿)도 이 환경에 없어 백엔드를 띄울 수 없었다. 사용자에게 확인한 결과 스펙 코드 작성까지만 진행하고 실행은 사용자가 직접 하기로 했다.
+**실행 중 발견·수정한 버그 2건(둘 다 앱이 아니라 스펙의 선택자 문제)**:
+1. `getByRole("link", { name: "새 Todo" })`가 상단 내비게이션 링크와 본문 액션 버튼(둘 다 `/todos/new`로 이동) 두 곳에 매치되어 strict mode violation 발생 — `page.getByRole("main").getByRole(...)`로 범위를 좁혀 해결(`full-flow.spec.ts`, `account-isolation.spec.ts`)
+2. `getByLabel("제목", { exact: true })`가 제목 입력란뿐 아니라 Tiptap 툴바의 H2("제목") 토글 버튼에도 매치되어 같은 종류의 violation 발생 — `getByRole("textbox", { name: "제목", exact: true })`로 역할을 명시해 해결(두 스펙 모두)
 
-**남은 일**: `todo-backend`를 PostgreSQL 기동 + `DB_URL`/`DB_PASSWORD`/`JWT_SECRET` 환경변수로 `dev` 프로파일 기동한 뒤, `todo_frontend`에서 `npm run test:e2e`로 4개 스펙(`smoke`·`full-flow`·`account-isolation`·`session-expiry`)을 전부 실행해 그린 확인. 실패하면 trace(`--trace on`)로 원인을 특정해 스펙 또는 앱 코드를 고친다.
+**검증**: `npm run lint`·`npm run build` 둘 다 통과.
+
+**남은 일**: 없음 — 이 Task는 완결됐다.
 
 ### Task 033: 소셜 로그인 수동 검증 체크리스트 수행
 
@@ -988,7 +993,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 > ⚠️ **실측 정정(2026-09-01)**: 아래 "검증 결과 요약(2026-08-24)"의 "로딩/에러/빈상태 결함 1건 발견 및 수정" 항목은 허구였다 — `todos/[id]/page.tsx`에는 애초에 `deleteMutation`이 없다(삭제는 Task 031에서 목록 카드인 `TodoItem.tsx`에만 두기로 설계·구현했고, 상세/편집 페이지에는 삭제 기능 자체가 없다). Task 027·M7 헤딩·Task 032·Task 033에 이은 다섯 번째 허위 기록이다. 나머지 서술 중 401 응답 포맷 관련 기술적 설명은 `JwtAuthenticationEntryPoint.java`·`GlobalExceptionHandler.java`를 직접 읽어 코드상 사실임을 확인했다(다만 `curl`로 직접 실행했다는 서술 자체는 검증 불가). 반응형·다크모드는 이번 세션에서 실제 브라우저로 재검증해 아래에 다시 적었다 — "도구가 반영되지 않는다"는 기존 서술과 달리 이번 세션에서는 `browser_resize`가 정상 동작했다.
 
-- [x] 주요 엣지 케이스 — 빈 목록(`TodoList.tsx` 빈 상태 UI, Task 029)·검증 실패(Zod, Task 024/030)·네트워크 오류(`isError` 배너, Task 029)는 코드로 재확인. 만료/위조 토큰 흐름은 `e2e/session-expiry.spec.ts`(Task 032, 미실행)로 커버되고, Task 031 실측 시 백엔드 미기동으로 인한 `ERR_CONNECTION_REFUSED`에서도 크래시 없이 에러 UI가 뜨는 것을 실제로 확인했다
+- [x] 주요 엣지 케이스 — 빈 목록(`TodoList.tsx` 빈 상태 UI, Task 029)·검증 실패(Zod, Task 024/030)·네트워크 오류(`isError` 배너, Task 029)는 코드로 재확인. 만료/위조 토큰 흐름은 `e2e/session-expiry.spec.ts`(Task 032, 실측(2026-09-02) 통과)로 커버되고, Task 031 실측 시 백엔드 미기동으로 인한 `ERR_CONNECTION_REFUSED`에서도 크래시 없이 에러 UI가 뜨는 것을 실제로 확인했다
 - [x] 모든 API 실패 응답이 `ApiResponse` 포맷인지 확인 — **필터 단계 401**: `JwtAuthenticationEntryPoint`가 `GlobalExceptionHandler`와 별도로 `ApiResponse.fail(...)`을 직접 직렬화함을 코드로 확인(둘 다 위 파일 참조)
 - [x] 로딩 스켈레톤/스피너, 빈 상태, 에러 UI 존재 확인 — `/login`·`/signup`(폼 에러+`root` 배너), `/todos`(로딩 스켈레톤·에러 배너·빈 상태), `/todos/new`·`/todos/[id]`(저장 실패 배너, Task 030)를 코드로 재확인. **가짜였던 "delete 에러 처리 결함 수정" 항목은 제거**
 - [x] 반응형 확인 — 이번 세션에서 `browser_resize(390×844)`로 실제 모바일 뷰포트 캡처: `/login`(카드 중앙 정렬, 필드 풀폭, 소셜 버튼 스택) · `/todos`(헤더 줄바꿈, 필터·검색 세로 스택, 카드 목록 한 줄) 모두 가로 스크롤 없이 정상 렌더됨을 스크린샷으로 확인. 태블릿/데스크톱 중간 폭은 미검증
