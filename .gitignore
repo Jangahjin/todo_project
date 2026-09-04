@@ -33,6 +33,11 @@ secrets/
 todo-backend/
 todo_frontend/
 
+# --- 첨부파일 로컬 스토리지 (tiptap-s3-image-upload-prompt.md §4) ---
+# todo-project/upload/ — todo-backend·todo_frontend와 형제 레벨. 하위 두 저장소의
+# .gitignore에는 이 경로를 적을 수 없다(저장소 밖 경로라 무효) — 루트 저장소에서만 처리한다.
+upload/
+
 # --- IDE 워크스페이스 메타데이터 ---
 .metadata/
 
