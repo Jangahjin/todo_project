@@ -1,6 +1,6 @@
-# AWS 배포 런북 (M9)
+# AWS 배포 런북 (M9·M10)
 
-이 문서는 M9(AWS 배포) 각 Task를 실제로 수행할 때 따라가는 체크리스트다. **AWS 콘솔/CLI 조작은 Claude Code가 대신 실행할 수 없으므로**, 사용자가 직접 수행하고 결과를 알려주면 그에 맞춰 `ROADMAP.md`를 갱신한다. 현재는 Task 036(RDS) 범위만 채워져 있다 — Task 037(EC2)·038(Amplify)·039(CORS/Redirect)는 해당 Task를 진행할 때 이어서 채운다.
+이 문서는 M9(AWS 배포)·M10(첨부파일 S3 전환) 중 AWS 콘솔/CLI 조작이 필요한 각 Task를 실제로 수행할 때 따라가는 체크리스트다. **AWS 콘솔/CLI 조작은 Claude Code가 대신 실행할 수 없으므로**(이 환경에는 AWS 자격증명·CLI가 전혀 없다), 사용자가 직접 수행하고 결과를 알려주면 그에 맞춰 `ROADMAP.md`를 갱신한다. Task 036(RDS)·037(EC2)·038(Amplify)·039(CORS/Redirect)·040(S3 전환) 모두 채워져 있다.
 
 ---
 
@@ -273,3 +273,76 @@ sudo journalctl -u todo-backend -f
 - [ ] HTTPS 자물쇠 아이콘 정상(프론트·백엔드 모두)
 
 이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` Task 039와 M9 마일스톤을 실측 결과로 갱신한다.
+
+---
+
+## Task 040: S3 전환 (첨부파일 스토리지, M10)
+
+### 이미 코드로 확인된 부분 (Claude Code가 이번 세션에 검증 완료, 추가 조치 불필요)
+
+- **`S3StorageService`/`S3Config` 구현 완료** — `app.storage.type=s3`일 때만 `@ConditionalOnProperty`로 등록되고, `LocalStorageService`와 상호 배타적임을 실제 기동으로 확인했다.
+- **AWS SDK v2(BOM `2.54.7`, 2026-08-29 릴리스, Java 21 완전 지원)는 Spring Boot 4의 Jackson 3와 충돌하지 않는다** — SDK 내부 Jackson 사용을 `software.amazon.awssdk.thirdparty.jackson.*`로 shade(relocate)해서 쓴다. `./mvnw compile`·`./mvnw test`(75개) 모두 통과.
+- **자격증명 부재 시 실패 방식을 확인했다** — 로컬 dev DB에 `APP_STORAGE_TYPE=s3` 환경변수만 오버라이드해 8081 포트로 임시 기동한 뒤 `POST /api/attachments/presign`을 호출한 결과, `S3Presigner`가 `DefaultCredentialsProvider` 체인에서 자격증명을 못 찾아 `SdkClientException`을 던졌고 `GlobalExceptionHandler`가 이를 그대로 `COMMON_500`(500)으로 감싸 응답했다 — 스택트레이스 유출 없이 기존 예외 처리 인프라가 별도 분기 없이 정상 동작함을 확인했다. **이 환경에는 AWS 자격증명이 전혀 없어(`~/.aws` 없음, 환경변수 미설정) 여기까지만 검증 가능하다.**
+- **presigned URL의 크기 미강제 위험**은 로컬 스토리지 전환 시 이미 실측했다(M10 Task 040 로컬 통합 테스트 — 거짓으로 작게 선언한 뒤 실제 6MB 전송) — S3 전환 후에도 `verifyUploaded()`(S3는 `HeadObject`)가 같은 역할을 하도록 구현되어 있으니, **버킷 생성 후 반드시 재확인**한다.
+
+### 사용자가 직접 해야 하는 부분 (AWS 콘솔 작업)
+
+1. **S3 버킷 생성**
+   - 리전은 백엔드(EC2/RDS)와 동일하게 — `application-prod.properties`의 `app.storage.s3.region` 기본값은 `ap-northeast-2`.
+   - **퍼블릭 액세스 차단은 4개 항목 모두 켠 상태 유지** (버킷을 퍼블릭으로 열지 않는다 — 조회는 항상 presigned GET을 거친다).
+   - 버킷 이름을 기록해 `AWS_S3_BUCKET` 환경변수 값으로 쓴다.
+
+2. **CORS 설정** (버킷 → 권한 → CORS) — presigned PUT을 브라우저가 직접 호출하므로 필요하다.
+   ```json
+   [
+     {
+       "AllowedOrigins": ["http://localhost:3000", "https://<Task 038의 Amplify 도메인>"],
+       "AllowedMethods": ["PUT", "GET", "HEAD"],
+       "AllowedHeaders": ["Content-Type"],
+       "ExposeHeaders": [],
+       "MaxAgeSeconds": 3000
+     }
+   ]
+   ```
+   > `AllowedHeaders`에 `Content-Type`만 있으면 된다 — `uploadFile`은 S3 presigned PUT에 `Authorization`을 붙이지 않는다(`requiresAuthHeaderForUpload()`가 `false`를 반환하도록 이미 구현됨, 가이드 §3).
+
+3. **IAM 정책 — 최소 권한** — EC2 인스턴스에 연결할 IAM Role(Task 037에서 이미 만든 EC2용 Role이 있다면 여기에 인라인 정책으로 추가)에 아래를 부여한다. **자격증명 키 발급은 하지 않는다** — EC2는 IAM Role, 로컬 시험은 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` 환경변수만 사용한다(PRD 5장 자격증명 원칙).
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:HeadObject"],
+         "Resource": "arn:aws:s3:::<버킷명>/*"
+       }
+     ]
+   }
+   ```
+
+4. **`application-prod.properties`용 환경변수 채우기** — Task 037의 `/etc/todo-backend.env`에 추가:
+   ```
+   AWS_S3_BUCKET=<위에서 만든 버킷명>
+   AWS_REGION=ap-northeast-2
+   ```
+   (`app.storage.type=s3`는 이미 `application-prod.properties`에 고정되어 있어 별도 설정이 필요 없다.)
+
+5. **로컬에서 먼저 시험해보고 싶다면** — 버킷·IAM 사용자(Access Key 발급, 테스트 후 반드시 삭제)를 만든 뒤 로컬에서:
+   ```bash
+   AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... \
+   APP_STORAGE_TYPE=s3 APP_STORAGE_S3_BUCKET=<버킷명> APP_STORAGE_S3_REGION=ap-northeast-2 \
+   ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+   ```
+   그 뒤 [tiptap-s3-image-upload-prompt.md §8](./tiptap-s3-image-upload-prompt.md) 시나리오를 다시 한번 통과하는지 확인한다(경로 조작 방어 항목 제외 — 그건 단위 테스트 영역).
+
+### 완료 후 확인할 것 (DoD)
+
+- [ ] 버킷 생성 + 퍼블릭 액세스 차단 4항목 모두 켜짐 확인
+- [ ] CORS 설정 반영 (브라우저에서 이미지 업로드 시 CORS 에러 없음)
+- [ ] IAM 정책 최소 권한(PutObject/GetObject/DeleteObject/HeadObject) 부여, Access Key는 발급하지 않았거나(EC2는 Role) 시험 후 삭제함
+- [ ] `application-prod.properties` 기준(`app.storage.type=s3`)으로 기동 성공
+- [ ] 이미지 업로드 → S3 버킷에 실제 객체 생성 확인(콘솔에서 직접 확인)
+- [ ] 5MB 초과 파일이 `complete` 단계(`HeadObject` 재확인)에서 거부되는지 재확인 — presigned PUT은 크기를 강제하지 못하므로 **로컬 전환 때보다 이 검증이 더 중요하다**(가이드 §9)
+- [ ] 프론트 코드 변경 없이 그대로 동작 확인 — 변경이 필요하다면 추상화가 잘못된 것이므로 보고
+
+이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` M10 Task 040의 S3 전환 DoD를 실측 결과로 갱신한다.
