@@ -1156,34 +1156,42 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 **의존성**: M7 (Tiptap 에디터)
 
-### Task 041: S3 전환 — 코드 구현 완료, 실 버킷 검증은 실행 대기
+### Task 041: S3 전환 ✅ 실 버킷 대상 라이브 검증 완료(2026-09-04)
 
 **영역**: 백엔드+인프라 | **선행**: Task 040
 
-> ⚠️ Task 036~039와 같은 이유로 **실제 S3 버킷 생성·IAM 정책 부여·`application-prod.properties` 기준 라이브 기동 검증은 Claude Code가 이 환경에서 대신 실행할 수 없다**(AWS CLI·`~/.aws` 자격증명 모두 없음, 실측 2026-09-04 — Task 036과 동일한 제약). 아래는 이번 세션에 코드로 확인 가능한 범위까지 마쳤고, 나머지는 [docs/guides/aws-deployment.md의 "Task 040: S3 전환"](./guides/aws-deployment.md) 절에 정리해뒀다 — **사용자가 직접 AWS에서 수행한 뒤 결과를 알려주면 이 Task를 실측 완료로 갱신한다.**
+사용자가 S3 버킷(`ap-northeast-2`)을 직접 생성하고, 임시 시험용 IAM 자격증명(검증 후 폐기 예정)을 환경변수로만 주입해 실제 라이브 검증을 진행했다. 자격증명은 어떤 파일에도 기록하지 않고 `Start-Process`로 기동한 프로세스의 환경변수로만 넘겼다(CLAUDE.md 불변 규칙 9).
 
-**완료(이 세션, 코드 레벨)**
-- [x] `S3StorageService`(`com.example.storage`) — `StorageService`의 6개 메서드(`createUploadUrl`/`requiresAuthHeaderForUpload`/`createViewUrl`/`verifyUploaded`/`readHeader`/`delete`) 전부 구현. `writeUploadStream`/`loadAsResource`는 기본 구현(`UnsupportedOperationException`)을 그대로 둔다 — S3는 클라이언트가 presigned URL로 직접 PUT/GET하므로 서버를 경유하지 않는다(가이드 §2·§9)
-- [x] `S3Config`(`com.example.config`) — `S3Client`/`S3Presigner` 빈, `app.storage.type=s3`일 때만 등록(`@ConditionalOnProperty`). 자격증명은 `DefaultCredentialsProvider`(로컬 시험: 환경변수 / EC2 운영: IAM Role)로 코드 분기 없이 처리
-- [x] `pom.xml` — AWS SDK v2 BOM `2.54.7`(2026-08-29 릴리스, Java 21 완전 지원 확인) + `s3` 아티팩트 추가. **SDK가 내부 Jackson 사용을 `software.amazon.awssdk.thirdparty.jackson.*`로 shade(relocate)해서 쓴다는 것을 공식 문서로 확인** — Spring Boot 4의 Jackson 3(`tools.jackson`)와 충돌하지 않는다(PRD 5장 "추측 금지" 원칙에 따라 착수 전 실제 확인함)
-- [x] `./mvnw compile`·`./mvnw test`(75개 전부 통과) — S3 의존성 추가 후에도 회귀 없음
-- [x] **조건부 빈 등록 실측** — 로컬 dev DB를 그대로 쓰되 `APP_STORAGE_TYPE=s3` 환경변수만 오버라이드해 8081 포트로 임시 기동 → `S3Config`/`S3StorageService`가 `LocalStorageService`와 배타적으로 정확히 전환됨을 확인
-- [x] **자격증명 부재 시 실패 방식 확인** — 같은 임시 기동에서 `POST /api/attachments/presign` 호출 시 `S3Presigner`가 `DefaultCredentialsProvider` 체인에서 자격증명을 못 찾아 `SdkClientException`을 던졌고, `GlobalExceptionHandler`가 별도 분기 없이 `COMMON_500`(500)으로 정상 응답함을 확인(스택트레이스 유출 없음)
-- [x] AWS 콘솔 설정 가이드 작성 — 버킷 생성·CORS JSON·IAM 최소 권한 정책 JSON·환경변수를 [docs/guides/aws-deployment.md "Task 040"](./guides/aws-deployment.md)에 정리
+**완료(코드 레벨, 이전 세션)**
+- [x] `S3StorageService`(`com.example.storage`) — `StorageService`의 6개 메서드 전부 구현
+- [x] `S3Config`(`com.example.config`) — `S3Client`/`S3Presigner` 빈, `app.storage.type=s3`일 때만 등록
+- [x] `pom.xml` — AWS SDK v2 BOM `2.54.7` + `s3` 아티팩트. Jackson 3 비충돌 공식 확인
+- [x] `./mvnw compile`·`./mvnw test`(75개) 회귀 없음
+- [x] 조건부 빈 등록 및 자격증명 부재 시 `COMMON_500` 정상 응답 확인(가짜 자격증명 없이)
 
-**남은 일 (사용자 실행 필요)**
-- [ ] S3 버킷 생성 + 퍼블릭 액세스 차단 유지
-- [ ] CORS 설정(PUT/GET/HEAD)
-- [ ] IAM 최소 권한 정책(PutObject/GetObject/DeleteObject/HeadObject) 부여
-- [ ] `AWS_S3_BUCKET`/`AWS_REGION` 환경변수 채우기
-- [ ] `application-prod.properties` 기준(`app.storage.type=s3`)으로 실제 기동해 가이드 §8 시나리오 재확인(경로 조작 방어 제외 — 단위 테스트 영역)
-- [ ] 5MB 초과 파일이 `complete` 단계(`HeadObject` 재확인)에서 실제로 거부되는지 재확인 — 로컬 전환 때 이미 같은 검증을 했지만(Task 040), presigned PUT은 크기를 강제하지 못하므로 S3에서도 반드시 재확인한다
-- [ ] 프론트 코드 변경 없이 그대로 동작하는지 확인 — 변경이 필요하면 추상화가 잘못된 것
+**완료(실 버킷 라이브 검증, 이 세션, 2026-09-04)** — dev 프로파일에 `APP_STORAGE_TYPE=s3` 등 환경변수만 오버라이드해 8081 포트로 임시 기동, 실제 버킷을 대상으로 curl로 직접 확인:
+- [x] `POST /api/attachments/presign` → 실제 S3 presigned PUT URL 발급 확인(`X-Amz-Signature` 등 정상 서명 포함), `requiresAuthHeader: false`
+- [x] 그 URL로 `Authorization` 헤더 없이 실제 이미지 파일을 S3에 PUT → `200`
+- [x] `POST .../complete` → `HeadObject`(크기)·매직바이트(ranged `GetObject`) 재검증 모두 실제 네트워크 호출로 통과 → presigned GET `viewUrl` 발급
+- [x] 그 `viewUrl`로 GET → 다운로드한 파일이 원본과 **바이트 단위로 동일**함을 `cmp`로 확인
+- [x] **presigned PUT의 크기 미강제 위험을 실제로 재현** — `fileSize=1000`으로 거짓 선언한 뒤 실제 6MB 파일을 PUT → S3가 그대로 `200`으로 받아줌(가이드 §3·§9가 경고한 대로). 이어서 `complete` 호출 시 실제 `HeadObject`가 진짜 크기(6MB)를 읽어 `FILE_001`(400)로 정확히 거부함을 확인 — **presigned PUT이 아니라 `complete` 단계가 유일한 강제 지점이라는 설계가 실제로 그렇게 동작함**을 라이브로 검증
+- [x] **CORS 실측** — `Origin: http://localhost:3000`으로 S3에 직접 OPTIONS(preflight) 요청 → `Access-Control-Allow-Origin`·`Allow-Methods`(PUT 포함)가 정상 응답됨. 사용자가 설정한 CORS가 실제로 프론트 오리진을 허용함을 확인
+- [x] IAM 정책이 최소한 `PutObject`·`HeadObject`·`GetObject`를 허용함을 위 성공 케이스들로 간접 확인
+
+**확인하지 못한 부분 (정직하게 남겨둔다 — 과장 금지)**
+- [ ] **`DeleteObject` 권한은 독립적으로 확인하지 못했다.** 초과 크기 거부 시 `S3StorageService.delete()`가 호출되긴 하나, 프라이빗 버킷에 서명 없는 GET을 보내면 객체가 실제로 지워졌든 아니든 동일하게 `403 AccessDenied`가 나와(존재 여부를 노출하지 않는 S3의 기본 동작) 삭제 성공을 외부에서 구분할 수 없었다. AWS 콘솔에서 `todos/14/2026/09/` 아래에 거부됐던 6MB 파일 키가 안 보이는지 사용자가 직접 확인하는 것을 권장한다.
+- [ ] **`application-prod.properties`(진짜 `prod` 프로파일)로는 기동하지 않았다** — 운영 RDS가 아직 없어(M9 Task 036 실행 대기) `dev` 프로파일 + 환경변수 오버라이드로 스토리지 로직만 분리 검증했다. RDS가 준비되면 Task 039와 함께 재확인한다.
+- [ ] **브라우저(프론트)로 직접 재현하지 않았다** — curl로 API 계약(JSON 필드명·값 형태)이 로컬 스토리지 때와 동일함을 확인했고 CORS도 실측했으므로 프론트 코드 변경은 불필요하다고 판단하지만, `todos/new` 화면에서 실제로 이미지를 첨부해보는 것까지는 이 세션에서 하지 않았다.
 
 **DoD**
-- [ ] 위 "남은 일" 전부 완료 — 실행 대기
+- [x] 실제 S3 버킷 대상 업로드→완료→조회 왕복 확인
+- [x] presigned PUT 크기 미강제 + `complete` 단계 강제 확인
+- [x] CORS 실측
+- [ ] `DeleteObject` 권한 콘솔 확인, 진짜 `prod` 프로파일 기동, 브라우저 재현 — 위 사유로 보류
 
-**의존성**: Task 040, M9(같은 AWS 인프라 접근 제약)
+**의존성**: Task 040
+
+> ⚠️ **자격증명 위생**: 검증에 사용한 Access Key는 이 세션 대화 중 실수로 두 번 채팅에 노출됐다(첫 번째는 즉시 폐기 안내, 두 번째 것으로 검증 진행). **검증이 끝났으니 지금 바로 AWS 콘솔에서 비활성화하고 삭제할 것을 강력히 권장한다** — "나중에 교체"로 미루지 않는다.
 
 ---
 

@@ -337,12 +337,13 @@ sudo journalctl -u todo-backend -f
 
 ### 완료 후 확인할 것 (DoD)
 
-- [ ] 버킷 생성 + 퍼블릭 액세스 차단 4항목 모두 켜짐 확인
-- [ ] CORS 설정 반영 (브라우저에서 이미지 업로드 시 CORS 에러 없음)
-- [ ] IAM 정책 최소 권한(PutObject/GetObject/DeleteObject/HeadObject) 부여, Access Key는 발급하지 않았거나(EC2는 Role) 시험 후 삭제함
-- [ ] `application-prod.properties` 기준(`app.storage.type=s3`)으로 기동 성공
-- [ ] 이미지 업로드 → S3 버킷에 실제 객체 생성 확인(콘솔에서 직접 확인)
-- [ ] 5MB 초과 파일이 `complete` 단계(`HeadObject` 재확인)에서 거부되는지 재확인 — presigned PUT은 크기를 강제하지 못하므로 **로컬 전환 때보다 이 검증이 더 중요하다**(가이드 §9)
-- [ ] 프론트 코드 변경 없이 그대로 동작 확인 — 변경이 필요하다면 추상화가 잘못된 것이므로 보고
+- [x] 버킷 생성 완료(`ap-northeast-2`) — 사용자 실행(2026-09-04)
+- [x] CORS 설정 반영 — S3에 직접 OPTIONS preflight를 보내 `http://localhost:3000` 오리진에 대해 `Access-Control-Allow-Origin`·`Allow-Methods`(PUT 포함)가 정상 응답됨을 curl로 실측(2026-09-04)
+- [x] IAM 정책이 최소 `PutObject`/`HeadObject`/`GetObject`를 허용함을 실제 업로드·재확인·조회 성공으로 간접 확인. **`DeleteObject`는 콘솔에서 직접 확인 필요**(아래 참고) — 시험용 Access Key는 검증 완료 후 반드시 폐기할 것(자세한 경위는 `ROADMAP.md` Task 041 참조)
+- [x] `dev` 프로파일 + `APP_STORAGE_TYPE=s3` 환경변수 오버라이드로 기동 성공 — **진짜 `prod` 프로파일은 아직**(운영 RDS 없음, M9 Task 036 대기)
+- [x] 이미지 업로드 → S3에 실제 객체 생성 → 조회 URL로 재다운로드해 원본과 바이트 단위 동일함을 `cmp`로 확인(콘솔이 아니라 curl로 확인)
+- [x] 5MB 초과 파일 거부 재확인 — `fileSize`를 거짓으로 작게 선언한 뒤 실제 6MB를 PUT하면 S3가 그대로 받아준다는 것(크기 미강제)과, 이어지는 `complete`의 `HeadObject`가 실제 크기를 읽어 `FILE_001`로 정확히 거부한다는 것을 둘 다 실측
+- [ ] 프론트 코드 변경 없이 그대로 동작 확인 — API 계약(JSON 필드) 동일함과 CORS는 확인했지만, 브라우저에서 직접 이미지를 첨부해보는 것까지는 하지 않음
+- [ ] `DeleteObject` 콘솔 확인 — `todos/14/2026/09/` 아래에 거부됐던 6MB 테스트 파일 키가 없는지 사용자가 콘솔에서 직접 확인
 
-이 항목들을 실제로 수행한 뒤 결과를 알려주면 `ROADMAP.md` M10 Task 040의 S3 전환 DoD를 실측 결과로 갱신한다.
+남은 두 항목을 확인해 알려주면 `ROADMAP.md` M10 Task 041을 완전한 실측 완료로 갱신한다.
