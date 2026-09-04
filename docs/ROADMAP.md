@@ -1177,17 +1177,18 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 - [x] **presigned PUT의 크기 미강제 위험을 실제로 재현** — `fileSize=1000`으로 거짓 선언한 뒤 실제 6MB 파일을 PUT → S3가 그대로 `200`으로 받아줌(가이드 §3·§9가 경고한 대로). 이어서 `complete` 호출 시 실제 `HeadObject`가 진짜 크기(6MB)를 읽어 `FILE_001`(400)로 정확히 거부함을 확인 — **presigned PUT이 아니라 `complete` 단계가 유일한 강제 지점이라는 설계가 실제로 그렇게 동작함**을 라이브로 검증
 - [x] **CORS 실측** — `Origin: http://localhost:3000`으로 S3에 직접 OPTIONS(preflight) 요청 → `Access-Control-Allow-Origin`·`Allow-Methods`(PUT 포함)가 정상 응답됨. 사용자가 설정한 CORS가 실제로 프론트 오리진을 허용함을 확인
 - [x] IAM 정책이 최소한 `PutObject`·`HeadObject`·`GetObject`를 허용함을 위 성공 케이스들로 간접 확인
+- [x] **브라우저(프론트) 실측** — 로컬 스토리지 dev 서버를 잠깐 내리고 같은 8080 포트에 S3 모드로 재기동(`.env.local`의 `NEXT_PUBLIC_API_BASE_URL` 변경 없이) → Playwright로 `/todos/new`에서 실제로 이미지 삽입 → 브라우저가 우리 백엔드가 아니라 **S3에 직접** `PUT`을 보내는 것을 네트워크 로그로 확인(`requiresAuthHeader: false` 그대로 동작) → 저장 후 상세 페이지 재방문 시 `POST /api/attachments/urls`가 다시 호출되어 **새 서명 타임스탬프의 조회 URL**로 이미지가 정상 렌더링됨(`naturalWidth: 1`, `complete: true`) 확인. **프론트 코드는 정말로 한 글자도 바꾸지 않았다** — 검증 후 원래 로컬 스토리지 dev 서버로 복구함
 
 **확인하지 못한 부분 (정직하게 남겨둔다 — 과장 금지)**
 - [ ] **`DeleteObject` 권한은 독립적으로 확인하지 못했다.** 초과 크기 거부 시 `S3StorageService.delete()`가 호출되긴 하나, 프라이빗 버킷에 서명 없는 GET을 보내면 객체가 실제로 지워졌든 아니든 동일하게 `403 AccessDenied`가 나와(존재 여부를 노출하지 않는 S3의 기본 동작) 삭제 성공을 외부에서 구분할 수 없었다. AWS 콘솔에서 `todos/14/2026/09/` 아래에 거부됐던 6MB 파일 키가 안 보이는지 사용자가 직접 확인하는 것을 권장한다.
 - [ ] **`application-prod.properties`(진짜 `prod` 프로파일)로는 기동하지 않았다** — 운영 RDS가 아직 없어(M9 Task 036 실행 대기) `dev` 프로파일 + 환경변수 오버라이드로 스토리지 로직만 분리 검증했다. RDS가 준비되면 Task 039와 함께 재확인한다.
-- [ ] **브라우저(프론트)로 직접 재현하지 않았다** — curl로 API 계약(JSON 필드명·값 형태)이 로컬 스토리지 때와 동일함을 확인했고 CORS도 실측했으므로 프론트 코드 변경은 불필요하다고 판단하지만, `todos/new` 화면에서 실제로 이미지를 첨부해보는 것까지는 이 세션에서 하지 않았다.
 
 **DoD**
 - [x] 실제 S3 버킷 대상 업로드→완료→조회 왕복 확인
 - [x] presigned PUT 크기 미강제 + `complete` 단계 강제 확인
 - [x] CORS 실측
-- [ ] `DeleteObject` 권한 콘솔 확인, 진짜 `prod` 프로파일 기동, 브라우저 재현 — 위 사유로 보류
+- [x] 브라우저에서 프론트 코드 변경 없이 그대로 동작 확인
+- [ ] `DeleteObject` 권한 콘솔 확인, 진짜 `prod` 프로파일 기동 — 위 사유로 보류(운영 RDS 준비 시 M9와 함께 재확인)
 
 **의존성**: Task 040
 
