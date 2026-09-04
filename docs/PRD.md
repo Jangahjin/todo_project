@@ -305,10 +305,22 @@ todo-frontend/
 
 - 프로필 상세 관리, 언어 설정
 - 실시간 알림, 소셜 기능(공유/협업)
-- 태그·카테고리, 첨부파일, 본문 전문 검색
-- **S3 등 오브젝트 스토리지** (첨부파일 도입 시 함께 검토)
+- 태그·카테고리, 본문 전문 검색
 - Refresh Token (명시 요청 전까지 도입하지 않음)
 - 프론트엔드 단위 테스트(Jest/Vitest/Testing Library) — MVP는 **Playwright E2E 하나로 통일**한다
+
+> ⚠️ **첨부파일(이미지)·오브젝트 스토리지는 더 이상 제외 항목이 아니다.** M10에서 로컬 디스크 저장 방식으로 구현·검증을 완료했다 — 4.6·8.2·13.1 참조. S3 전환은 `StorageService` 추상화로 대비해두었고 M9 AWS 배포와 함께 진행할 예정이다.
+
+### 4.6 첨부파일 (이미지)
+
+| ID | 기능 | 상세 | 관련 페이지 | 백엔드 API |
+|----|------|------|------------|-----------|
+| **FILE-01** | 이미지 첨부 | Tiptap 에디터에 이미지 삽입(툴바 버튼·붙여넣기·드래그앤드롭 3경로). presign→업로드→complete 3단계, 본인 업로드분만 접근 가능 | Todo 작성/편집 페이지 | ✅ |
+
+- 저장 방식: **로컬 디스크**를 먼저 구현하고, `StorageService` 인터페이스로 추상화해 **S3 전환**에 대비했다(9장, 13.1). `AttachmentService`는 어떤 구현체인지 알지 못한다.
+- 크기 상한 **5MB**, 허용 형식 **jpg/png/gif/webp** — **SVG는 제외**한다(인라인 `<script>`를 담을 수 있어 저장형 XSS 벡터가 됨).
+- 조회 URL은 **단기 서명 토큰(30분)** 방식이다. 만료될 수 있으므로 본문(Tiptap JSON)에는 `attachmentId`만 영속시키고, Todo를 불러올 때마다 새 URL을 재발급받아 주입한다.
+- 상세 계약은 [API_SPEC.md 7장](./API_SPEC.md)과 [docs/guides/tiptap-s3-image-upload-prompt.md](./guides/tiptap-s3-image-upload-prompt.md)를 참조한다.
 
 ---
 
@@ -575,6 +587,26 @@ M0의 DB 연결 확인 단계에서 `\dn` 으로 **실제 생성된 스키마 �
 > **`keyword` 검색은 위 인덱스로 커버되지 않는다.** 대소문자 무시 부분 일치(`LOWER(title) LIKE '%kw%'`)는 선행 와일드카드 때문에 B-tree 인덱스를 탈 수 없다.
 > MVP에서는 `user_id` 선필터로 후보를 좁힌 뒤 스캔하는 것으로 충분하다. 사용자당 데이터가 크게 늘면 `pg_trgm` 확장 + GIN 인덱스 도입을 검토한다 (**MVP 범위 외**).
 
+#### `attachment` (M10 — 4.6 첨부파일)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | BIGSERIAL | PK, AUTO | 첨부 ID |
+| todo_id | BIGINT | FK → todos.id, NULL 허용 | 업로드 시점엔 아직 Todo가 없어 NULL — Todo 저장 시 본문에 남은 것만 연결 |
+| user_id | BIGINT | FK → users.id, NOT NULL | 업로더 (권한 검증용) |
+| storage_type | VARCHAR(20) | NOT NULL | `LOCAL` / `S3` |
+| storage_key | VARCHAR(512) | UNIQUE, NOT NULL | 로컬 상대경로 또는 S3 객체 키 |
+| original_filename | VARCHAR(255) | NOT NULL | 원본 파일명(표시용 — 저장 키의 확장자 소스로 쓰지 않음) |
+| content_type | VARCHAR(100) | NOT NULL | 서버가 매직 바이트로 재검증한 값 |
+| file_size | BIGINT | NOT NULL | bytes |
+| status | VARCHAR(20) | NOT NULL | `TEMP`(업로드만 됨) / `LINKED`(Todo 본문에 연결됨) |
+| created_at | TIMESTAMP | NOT NULL | 생성일 |
+| deleted_at | TIMESTAMP | NULL | Soft Delete 시각 |
+
+**인덱스**: `todo_id`, `(status, created_at)` — 고아 파일(업로드만 되고 연결 안 된 `TEMP`, 유예 기간 지난 삭제분) 정리 배치용.
+
+> `todo_id`가 단일 FK라 한 첨부는 한 Todo에만 속한다. 본문을 복사·붙여넣기해 같은 `attachmentId`가 여러 Todo에 들어가면 **먼저 저장되는 쪽만 `LINKED`를 가져가고 나머지는 연결이 끊긴다** — MVP 정책상 재사용된 이미지는 재업로드를 요구한다. 다대다 연결 테이블은 범위 밖으로 남긴다.
+
 ### 8.3 Soft Delete 구현 방침
 
 - JPA 엔티티에 `@SQLDelete` + `@SQLRestriction("deleted_at IS NULL")` (Hibernate 6.x 이상) 적용.
@@ -622,6 +654,8 @@ private String content;   // Tiptap JSON 문서 문자열
 - `String` ↔ `jsonb`는 FormatMapper 의존이 가장 낮은 조합이다.
 - Tiptap 본문은 **서버가 내용을 해석할 필요가 없는 불투명(opaque) 데이터**다. 검색 대상도 `title`뿐이므로(7장), 서버에서 JSON 트리로 다룰 이유가 없다.
 - API 응답에서는 `TodoResponse`가 이 문자열을 **JSON 객체 그대로** 직렬화해 내보낸다(API_SPEC 4.1). 프론트는 파싱 없이 Tiptap에 그대로 전달한다.
+
+> ⚠️ **예외 (M10 첨부파일, 4.6)**: `TodoService`는 저장/수정 시점에 한해 이 JSON을 노드 트리로 순회해 `image` 노드의 `attrs.attachmentId`만 추출한다 — 본문에 실제로 남아 있는 첨부만 `attachment`(8.2) 테이블에서 `LINKED`로 전환하기 위함이다. 이 순회는 정규식이나 HTML 파서가 아니라 **JSON 노드 트리 순회만** 사용하며, `attachmentId` 외의 구조·내용은 여전히 해석하지 않는다 — "불투명 데이터" 원칙은 유지된다.
 
 **M1 착수 시 반드시 실측할 것**
 
@@ -805,7 +839,7 @@ NEXT_PUBLIC_API_BASE_URL
 | **목록 필터·페이지 상태** | **URL 쿼리스트링** (`?page=&status=&keyword=`) | 뒤로가기·새로고침·링크 공유가 동작하고, React Query 캐시 키와 자연히 일치한다 (6.4) |
 | **테스트 DB** | **로컬 PostgreSQL `todolistdb_test` 스키마** | Docker 미도입 확정 → Testcontainers 제외. H2는 JSONB·식별자 폴딩을 재현 못함 (1.3) |
 | **연관관계 페치** | **`LAZY` 명시 필수** | `@ManyToOne` 기본값 EAGER는 페이지네이션 목록에서 N+1을 유발 (8.3) |
-| **S3 / 오브젝트 스토리지** | **MVP에서 제외** | 첨부파일이 범위 밖(4.5)이고 정적 자산은 Amplify가 처리 → 담을 것이 없다. 텍스트 기반 Todo에 집중 |
+| **첨부파일 스토리지** | **로컬 디스크 우선 구현(M10), S3는 `StorageService` 추상화로 전환 예정** | 이미지 첨부(4.6·8.2)를 로컬로 먼저 완성·검증했다. 로컬→S3 전환은 배포 인프라(M9)와 함께 진행하며, 프론트 코드는 스토리지 종류를 판단하지 않으므로 변경이 없어야 한다 |
 | 목록 기본 정렬 | **`created_at DESC`** | MVP에서는 정렬 선택 UI 없이 고정 |
 | 기본 / 최대 page size | **10 / 100** | 최대치 초과 요청은 100으로 절삭 |
 | `keyword` 검색 대상 | **`title`만** | JSONB 본문 전문 검색은 MVP 제외 |

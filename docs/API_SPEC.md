@@ -60,6 +60,8 @@
 > }
 > ```
 
+> ⚠️ **래핑 예외 2건 (M10 첨부파일, 7장)**: `GET /api/attachments/{id}/raw`(바이너리 이미지 스트림)과 S3 presigned PUT 응답(S3가 직접 응답하며 우리 서버를 거치지 않음)은 `ApiResponse`로 감싸지 않는다.
+
 ### 1.2 `PageResponse<T>`
 
 목록 조회 시 `ApiResponse.data`에 담기는 페이지네이션 래퍼.
@@ -153,6 +155,18 @@
 | `TODO_002` | 400 | 잘못된 상태값 (`TODO`/`DONE` 외) |
 
 > **소유권 위반은 403이 아닌 404로 응답한다.** 403은 "그 리소스는 존재하지만 네 것이 아니다"를 알려주므로, ID를 순회하며 타인 리소스의 존재 여부를 열거할 수 있게 된다. PRD 10장 보안 요구사항 참조.
+
+### 2.4 첨부파일 (M10)
+
+| 코드 | HTTP | 의미 |
+|------|------|------|
+| `FILE_001` | 400 | 파일 크기가 허용 범위(5MB) 초과 |
+| `FILE_002` | 400 | 허용되지 않는 파일 형식 (jpg/png/gif/webp 외, SVG 포함) |
+| `FILE_003` | 404 | 첨부파일을 찾을 수 없음 **(타인 소유인 경우 포함)** |
+| `FILE_004` | 409 | 이미 처리된 첨부파일 (재업로드 시도) |
+| `FILE_005` | 400 | 업로드가 완료되지 않음 (`complete` 호출 전 상태로 Todo에 연결 시도) |
+
+> 소유권 위반은 여기서도 403이 아닌 404(`FILE_003`)로 응답한다 — 2.3과 동일한 이유(PRD 10장).
 
 ---
 
@@ -566,5 +580,131 @@ GET /api/todos?page=0&size=10&status=TODO&keyword=장보기
 - **목록 조회의 `page`·`status`·`keyword`는 URL 쿼리스트링을 단일 출처로 삼는다** (PRD 6.4). React Query의 쿼리 키도 이 값들로 구성해 URL과 캐시를 일치시킨다.
   - `useSearchParams()`를 쓰므로 해당 영역은 **`<Suspense>` 래핑이 필수**다 (Next.js 16).
 - 검증 실패(`COMMON_001`) 응답의 `data` 맵을 React Hook Form의 필드 에러로 매핑한다.
+- **첨부파일 업로드 PUT은 `apiFetch`를 거치지 않는다** (M10) — `apiFetch`는 `Content-Type: application/json`을 강제하고 응답을 항상 JSON으로 파싱해 바이너리 전송에 쓸 수 없다. `lib/api/attachments.ts`의 `uploadFile`(`XMLHttpRequest`)을 대신 사용한다. 7장 참조.
 
 > ⚠️ **인증·CRUD 로직을 Next.js Server Actions에서 직접 구현하지 않는다.** 비밀번호 해싱·사용자 생성·토큰 발급은 전부 Spring Boot 백엔드의 책임이다.
+
+---
+
+## 7. 첨부파일 API (M10)
+
+> 기능 ID `FILE-01` (PRD 4.6) · 상세 설계·구현 순서는 [docs/guides/tiptap-s3-image-upload-prompt.md](./guides/tiptap-s3-image-upload-prompt.md) 참조.
+> Todo 본문(Tiptap JSON)에 이미지를 삽입하기 위한 업로드·조회 API. 파일 실체는 스토리지(로컬 또는 S3)에, 메타데이터는 `attachment` 테이블(PRD 8.2)에 저장한다.
+
+### 7.1 업로드 URL 발급 — `POST /api/attachments/presign`
+
+**Request**
+
+```json
+{ "filename": "photo.png", "contentType": "image/png", "fileSize": 102400 }
+```
+
+| 필드 | 타입 | 필수 | 검증 |
+|------|------|------|------|
+| `filename` | string | ✅ | 표시용 원본 파일명 (저장 키의 확장자 소스로 쓰지 않음) |
+| `contentType` | string | ✅ | 화이트리스트: `image/jpeg` \| `image/png` \| `image/gif` \| `image/webp` |
+| `fileSize` | number | ✅ | 5MB(5242880) 이하로 선언되어야 함 — **선언값일 뿐**, 실제 강제는 업로드 단계에서 스트림으로 재확인한다(presigned PUT은 크기를 강제하지 못함) |
+
+**Response** — `201 Created`
+
+```json
+{
+  "success": true,
+  "data": { "attachmentId": 1, "uploadUrl": "http://localhost:8080/api/attachments/1/upload", "requiresAuthHeader": true },
+  "message": null,
+  "errorCode": null
+}
+```
+
+> `requiresAuthHeader` — 로컬 스토리지는 `true`(우리 서버의 인증 엔드포인트라 `Authorization` 헤더 필요), S3는 `false`(presigned URL 자체가 서명이라 임의 헤더를 추가하면 서명 불일치로 403). **프론트는 로컬/S3 여부를 직접 판단하지 않고 이 플래그만 본다.**
+
+**에러**: `COMMON_001`(400), `FILE_001`(400 선언 크기 초과), `FILE_002`(400 형식 불허)
+
+---
+
+### 7.2 파일 업로드 — `PUT /api/attachments/{id}/upload` *(로컬 전용)*
+
+요청 본문을 스트림으로 그대로 저장한다. S3 모드에서는 7.1의 `uploadUrl`이 S3 presigned PUT URL이므로 이 엔드포인트는 호출되지 않는다.
+
+- 누적 바이트 수가 5MB를 넘으면 **즉시 중단, 부분 파일 삭제, 400(`FILE_001`)**
+- 이미 업로드된 첨부(`status != TEMP`)면 `409`(`FILE_004`)
+
+**Response** — `200 OK` (바디 없음, `ApiResponse` 아님)
+
+**에러**: `FILE_001`(400), `FILE_003`(404 소유자 불일치), `FILE_004`(409)
+
+---
+
+### 7.3 업로드 완료 확정 — `POST /api/attachments/{id}/complete`
+
+`verifyUploaded()`로 실제 파일 크기를 재확인하고(S3는 `HeadObject`, 로컬은 파일시스템 조회), 파일 시그니처(매직 바이트)로 `contentType`을 재검증한다 — 클라이언트가 보낸 값은 신뢰하지 않는다.
+
+**Response** — `200 OK`
+
+```json
+{
+  "success": true,
+  "data": { "attachmentId": 1, "viewUrl": "http://localhost:8080/api/attachments/1/raw?token=..." },
+  "message": null,
+  "errorCode": null
+}
+```
+
+**에러**: `FILE_001`(400 재확인 결과 크기 초과), `FILE_002`(400 매직 바이트 불일치), `FILE_003`(404), `FILE_005`(400 업로드 미완료)
+
+---
+
+### 7.4 조회 URL 벌크 발급 — `POST /api/attachments/urls`
+
+Todo 본문 하나에 이미지가 여러 개 있어도 한 번에 조회한다 — 이미지 개수만큼 왕복하지 않기 위함이다.
+
+**Request**
+
+```json
+{ "ids": [1, 2, 3] }
+```
+
+**Response** — `200 OK`
+
+```json
+{
+  "success": true,
+  "data": { "urls": [ { "attachmentId": 1, "viewUrl": "http://localhost:8080/api/attachments/1/raw?token=..." } ] },
+  "message": null,
+  "errorCode": null
+}
+```
+
+> 존재하지 않거나 **타인 소유인 ID는 결과에서 조용히 제외**된다(에러 아님) — 벌크 조회는 일부만 유효해도 나머지를 반환하는 편이 낫다는 판단이다. 단건 API(7.2·7.3·7.5·7.6)의 소유권 위반은 여전히 404(`FILE_003`)다.
+
+---
+
+### 7.5 파일 조회 — `GET /api/attachments/{id}/raw?token=...`
+
+> ⚠️ **`ApiResponse` 래핑 예외** (1.1 참조). 바이너리 이미지 스트림을 그대로 반환한다.
+
+`<img src>`를 브라우저가 직접 호출하므로 `Authorization` 헤더를 실을 수 없다. `SecurityConfig`에서 이 경로만 `permitAll`이고, 대신 쿼리의 **단기 서명 토큰(30분 유효)** 으로 컨트롤러가 직접 인가한다 — 로그인 세션과 무관하게 토큰만으로 접근 가능하다(S3 presigned GET과 동일한 개념).
+
+응답 헤더에 `Content-Disposition: inline`, `X-Content-Type-Options: nosniff`를 포함한다 — 후자가 없으면 브라우저의 MIME 스니핑으로 위장 파일이 실행형 콘텐츠로 해석될 위험이 있다.
+
+**에러**: `FILE_003`(404 — 존재하지 않음 / 토큰 만료·위조)
+
+---
+
+### 7.6 삭제 — `DELETE /api/attachments/{id}`
+
+**Soft Delete**만 수행한다(불변 규칙 5와 동일). 실제 파일은 유예 기간(7일) 경과 후 고아 파일 정리 배치가 물리 삭제한다.
+
+**Response** — `200 OK`
+
+```json
+{ "success": true, "data": null, "message": "삭제되었습니다.", "errorCode": null }
+```
+
+**에러**: `FILE_003`(404)
+
+---
+
+### 7.7 Todo와의 연결 (4장 참조)
+
+`POST /api/todos`·`PUT /api/todos/{id}` 처리 시 서버가 `content`(Tiptap JSON)를 **노드 트리로 순회**해 `image` 노드의 `attachmentId`를 전부 수집하고(PRD 8.4 예외 조항), 본문에 실제로 남아 있는 것만 `LINKED` + `todo_id`로 전환한다. 저장 전에 연결돼 있었으나 본문에서 사라진 첨부는 Soft Delete하고, 다른 사용자 소유이거나 이미 다른 Todo에 `LINKED`된 ID가 섞여 있으면 요청 자체를 거부한다. Todo가 Soft Delete되면 연결된 첨부도 함께 Soft Delete된다.

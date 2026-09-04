@@ -1069,7 +1069,7 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 - [ ] 환경변수 `NEXT_PUBLIC_API_BASE_URL` = 운영 백엔드 주소 — 가이드 2절
 - [ ] HTTPS 인증서 및 커스텀 도메인 확인 — 가이드 3절
 
-> 📌 **S3는 MVP에서 사용하지 않는다** (PRD 1.3 · 13.1). 첨부파일이 범위 밖이고 Next.js 정적 자산은 Amplify가 자체 처리하므로 담을 것이 없다. 첨부파일을 도입하는 시점에 다시 검토한다.
+> 📌 **Amplify 배포 자체에는 S3가 필요 없다** — Next.js 정적 자산은 Amplify가 자체 처리한다. ~~S3는 MVP에서 사용하지 않는다~~ 는 M10에서 뒤집혔다(PRD 4.5/4.6/13.1) — 첨부파일 이미지는 로컬 디스크로 먼저 구현됐고(M10), S3 전환은 이 Task(EC2/Amplify 배포)와 별개로 `S3StorageService` 구현이 별도 필요하다(가이드 §9, M10 Task 040 DoD 참조).
 
 ### Task 039: 운영 도메인 기준 CORS·OAuth2 Redirect URI 갱신 및 보안 점검 ⚠️ 코드 검증 완료, 실행 대기
 
@@ -1096,6 +1096,68 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 ---
 
+## M10. 첨부파일(이미지) — 로컬 스토리지 📎
+
+**목표**: Tiptap 에디터 본문에 이미지를 첨부할 수 있게 한다. 로컬 디스크 저장으로 먼저 완성·검증하고, S3 전환은 배포(M9)와 별도로 진행한다. 상세 설계는 [docs/guides/tiptap-s3-image-upload-prompt.md](./guides/tiptap-s3-image-upload-prompt.md).
+
+> ⚠️ 이 마일스톤은 `docs/PRD.md` 4.5/13.1이 "첨부파일·S3는 MVP 제외"로 확정해 둔 결정을 뒤집는다 — PRD 4.6·8.2·8.4·13.1과 API_SPEC 2.4·6·7장을 이 세션에서 함께 갱신했다.
+
+### Task 040: 이미지 첨부 기능 구현 (백엔드·프론트) ✅ 완료(2026-09-04) — 로컬 통합 테스트 실측 완료
+
+**영역**: 백엔드+프론트 | **선행**: M7 (Task 030, Tiptap 에디터)
+
+**백엔드**
+- [x] `attachment` 테이블/엔티티(`com.example.domain.attachment.Attachment`) + `AttachmentRepository` — `ddl-auto=update`(dev)로 자동 생성 확인(실행 SQL 로그로 `create table todolistdb.attachment` 확인)
+- [x] `StorageService` 인터페이스 + `LocalStorageService`(`@ConditionalOnProperty(app.storage.type=local)`) — `com.example.storage` 패키지
+- [x] `AttachmentService`/`AttachmentController` — presign·upload·complete·urls(벌크)·raw·delete 6개 엔드포인트(API_SPEC 7장)
+- [x] `AttachmentUrlTokenProvider` — `raw` 엔드포인트용 단기(30분) 서명 토큰 발급/검증
+- [x] `SchedulingConfig`(`@EnableScheduling` 신규 등록) + `AttachmentService.cleanupOrphans()`(`@Scheduled(cron = "0 0 3 * * *")`) — `TEMP` 24시간 경과 · 삭제 후 유예 7일 경과분을 물리 삭제
+- [x] `TodoService.create`/`update`에 `attachmentService.syncLinks(...)` 연결 — Tiptap JSON 노드 트리 순회로 `attachmentId` 수집, 본문에 남은 것만 `LINKED`(PRD 8.4 예외 조항) / `TodoService.delete`에 `attachmentService.deleteAllForTodo(...)` 연결
+- [x] `SecurityConfig`에 `/api/attachments/*/raw` `permitAll` 추가(서명 토큰으로 컨트롤러가 직접 인가)
+- [x] `ErrorCode`에 `FILE_001~005` 추가(API_SPEC 2.4)
+- [x] `LocalStorageServiceTest` — 경로 조작(`../`) 방어 단위 테스트. `storageKey`는 서버가 생성하고 이후 API는 `attachmentId`만 받으므로 API 레벨엔 주입 지점이 없어, 가이드 §4/§8 방침대로 단위 테스트로만 검증한다
+
+**프론트**
+- [x] `@tiptap/extension-image` 설치, `components/editor/extensions/attachment-image.ts`(`attachmentId`·`uploadToken` 커스텀 attrs)
+- [x] `TiptapEditor.tsx` — 툴바 버튼·붙여넣기·드래그앤드롭 3경로 업로드, presign→PUT(`XMLHttpRequest`)→complete 순차 호출, 임시 blob 미리보기 → 실제 URL 교체
+- [x] `lib/api/attachments.ts`(`presignUpload`/`uploadFile`/`completeUpload`/`getViewUrls`/`deleteAttachment`), `lib/tiptap/attachment-content.ts`(`collectAttachmentIds`/`injectViewUrls`)
+- [x] `app/(main)/todos/[id]/page.tsx` — Todo 로드 시 `attachmentId` 수집 → `getViewUrls` 벌크 조회 → `injectViewUrls`로 새 URL 주입 후 에디터에 전달
+
+**로컬 통합 테스트** (가이드 §8, 11개 항목 — 이 세션에서 Playwright MCP 브라우저 조작 + curl로 전부 실측)
+- [x] 서버 기동 시 `todo-project/upload/` 디렉토리 자동 생성
+- [x] 이미지 첨부 → `upload/todos/{userId}/{yyyy}/{MM}/{uuid}.{ext}` 경로에 실제 파일 생성
+- [x] 업로드 직후 `attachment` 테이블에 `status=TEMP` 행 생성(INSERT SQL 로그로 확인)
+- [x] Todo 저장 후 `status=LINKED` 전환 + `getViewUrls`로 조회 성공(UPDATE SQL 로그 + API 응답으로 확인)
+- [x] Todo 재조회 시 에디터 내부에 이미지 정상 표시 — **재조회마다 새 서명 토큰이 발급됨**을 두 차례 로드의 JWT `iat` 값 차이로 확인
+- [x] 본문에서 이미지를 지우고 저장 → 해당 첨부가 Soft Delete됨(`urls` 재조회 결과 빈 배열)
+- [x] 5MB 초과 파일 업로드 거부 — `presign` 선언 크기 초과(400) 및 **거짓으로 작게 선언한 뒤 실제 6MB 스트림 전송** 양쪽 모두 400(`FILE_001`)으로 중단 + 부분 파일 미생성 확인. `.exe`(`application/x-msdownload`) 업로드는 `presign` 단계에서 400(`FILE_002`)
+- [x] 다른 사용자의 `attachmentId`로 `DELETE` 시도 시 **404**(`FILE_003`, 불변 규칙 11) — 두 번째 테스트 계정으로 실측. 단 벌크 `urls` 조회는 에러 없이 결과에서 조용히 제외(API_SPEC 7.4)
+- [x] `upload/` 디렉토리가 (루트 저장소 기준) `git status`에 `!!`(ignored)로만 잡히고 추적되지 않음
+- [x] Todo를 삭제하면 연결된 첨부도 함께 Soft Delete됨(삭제 후 `urls` 조회 결과 빈 배열)
+- [x] `/api/attachments/{id}/raw?token=...`를 `Authorization` 헤더 없이 curl로 직접 호출해도 200(서명 토큰만으로 인가됨을 확인)
+
+> ⚠️ **실측 중 발견해 고친 버그 3건** (이 세션, 2026-09-04):
+> 1. `attachment-image.ts`의 `addAttributes()`가 `attachmentId`만 등록하고 `uploadToken`을 등록하지 않아, Tiptap이 이 값을 노드에 저장하지 않았다. 업로드 API(presign/upload/complete)는 매번 성공했지만 `findImageNodePosByUploadToken`이 항상 매칭에 실패해 **placeholder가 영원히 실제 이미지로 교체되지 않는** 조용한 버그였다 — 저장된 값은 만료되는 `blob:` URL 그대로였다. `uploadToken`을 스키마에 등록해 해결.
+> 2. `collectAttachmentIds`/`injectViewUrls`/`getViewUrls` 유틸리티는 작성돼 있었지만 `todos/[id]/page.tsx`가 실제로 호출하지 않아, Todo 상세를 열 때 **저장된 (30분 후 만료되는) URL을 그대로 사용**하고 있었다. `useQuery`의 `queryFn`에 벌크 재조회+주입 단계를 추가해 해결 — 이제 열 때마다 새 서명 토큰을 받는다. 두 버그 모두 방금 만든 Todo에서는 우연히 통과하는(토큰이 아직 안 만료됨) 종류라 짧은 수동 확인으로는 놓치기 쉬웠다.
+> 3. (부수적) `TiptapEditor.tsx`의 `editorRef.current = editor` 대입이 렌더링 중에 일어나 React 19 `react-hooks/refs` 린트 규칙을 위반하고 있었다 — `useEffect`로 이동해 `npm run lint` 클린 상태로 되돌렸다.
+>
+> 세 버그 모두 이전 세션에서 커밋되지 않은 채 남아 있던 작업에 있었다 — "업로드 API가 성공했다"만으로는 드러나지 않고, 실제 화면의 `<img src>` 값과 재조회 후 상태까지 확인해야 잡히는 종류였다.
+
+**검증**
+- [x] 백엔드 `./mvnw test` — **75개 전부 통과**(`LocalStorageServiceTest` 포함), `BUILD SUCCESS`
+- [x] 프론트 `npm run lint` — 클린 (위 버그 3 수정 후)
+- [x] 프론트 `npm run build` — 프로덕션 빌드 성공 (`/todos/[id]` 등 9개 라우트 정상 생성)
+
+**DoD**
+- [x] 가이드 §8의 로컬 테스트 시나리오 11개 항목 전부 실측 통과
+- [x] 백엔드 테스트·프론트 빌드/린트 통과
+- [ ] S3 전환(가이드 §9) — **다음 세션으로 이관**. `StorageService` 추상화는 이미 준비돼 있어 `S3StorageService` 구현 + AWS SDK 추가 + `application-prod.properties`(이미 `app.storage.type=s3`로 설정됨) 기동 검증만 남았다
+- [x] 문서 갱신(가이드 §10 7단계) — `PRD.md`(4.5/4.6/8.2/8.4/13.1), `API_SPEC.md`(1.1/2.4/6/7장), `ROADMAP.md`(이 절, 부록 A·B) 반영 완료(이 세션)
+
+**의존성**: M7 (Tiptap 에디터)
+
+---
+
 ## 부록 A. 기능 ID ↔ 마일스톤 매핑
 
 PRD 4장의 모든 기능 ID가 어느 마일스톤에서 구현되는지 정리한다. **누락된 기능이 없는지 확인하는 용도**다.
@@ -1117,6 +1179,7 @@ PRD 4장의 모든 기능 ID가 어느 마일스톤에서 구현되는지 정리
 | `TODO-06` | 삭제 (Soft Delete) | M4 (Task 018) | M7 (Task 031) |
 | `UI-01` | 다크모드 토글 | — | M5(Task 020 프로바이더) + **M6(Task 027 헤더 배치)** |
 | `UI-02` | 페이지네이션 컴포넌트 | — | M5 (Task 022) |
+| `FILE-01` | 이미지 첨부 | M10 (Task 040) | M10 (Task 040) |
 
 **기능 ID가 없는 필수 구현 요소** (PRD 2.1/10장에 있으나 4장 기능표에는 없는 항목)
 
@@ -1132,7 +1195,7 @@ PRD 4장의 모든 기능 ID가 어느 마일스톤에서 구현되는지 정리
 
 ## 부록 B. 권장 커밋 태그
 
-`m0-init` · `m1-domain` · `m2-auth` · `m3-oauth2` · `m4-todo-api` · `m5-fe-base` · `m6-fe-auth` · `m7-fe-todo` · `m8-qa` · `m9-deploy`
+`m0-init` · `m1-domain` · `m2-auth` · `m3-oauth2` · `m4-todo-api` · `m5-fe-base` · `m6-fe-auth` · `m7-fe-todo` · `m8-qa` · `m9-deploy` · `m10-attachment`
 
 ## 부록 C. 미해결 위험 추적 (PRD_VALIDATION 연동)
 
