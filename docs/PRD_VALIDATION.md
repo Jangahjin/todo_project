@@ -28,26 +28,26 @@
 
 PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라고 단언한다. 전 항목을 실제 파일과 대조했다.
 
-| PRD 1.3 주장 | 실제 파일 값 | 판정 |
-|---|---|---|
-| Spring Boot **4.1.0** | `pom.xml` parent `4.1.0` | ✅ [FACT] |
-| JDK **21** | `<java.version>21</java.version>` | ✅ [FACT] |
-| Maven / Lombok | `mvnw` 존재, `lombok` optional + annotationProcessorPaths | ✅ [FACT] |
-| jjwt **0.12.6** (api/impl/jackson) | 3개 모듈 모두 `0.12.6` | ✅ [FACT] |
-| 베이스 패키지 `com.example` | `groupId=com.example`, `src/main/java/com/example/TodoBackendApplication.java` | ✅ [FACT] |
-| `spring-boot-starter-webmvc` 로 모듈 분리 | pom에 `spring-boot-starter-webmvc` + `-webmvc-test`/`-security-test`/`-validation-test`/`-data-jpa-test` | ✅ [FACT] — Spring Boot 4.0 마이그레이션 가이드로 교차 확인 |
-| Next.js **16.3.1** | `"next": "16.3.1"`, `eslint-config-next: 16.3.1` | ✅ [FACT] |
-| React **19.2.8** | `react`/`react-dom` 모두 `19.2.8` | ✅ [FACT] |
-| TypeScript 5 / Tailwind CSS 4 | `typescript ^5`, `tailwindcss ^4`, `@tailwindcss/postcss ^4` | ✅ [FACT] |
-| Tailwind 4 CSS-first (`tailwind.config.js` 미사용) | `components.json`의 `"tailwind.config": ""`, config 파일 부재 | ✅ [FACT] |
-| shadcn/ui **4.18.0**, style `radix-nova`, baseColor `neutral` | `"shadcn": "^4.18.0"`(= **CLI 버전**), `components.json` style `radix-nova` / baseColor `neutral` | ⚠️ 부분 — Minor #14 참조 |
-| radix-ui, lucide-react **1.33.0** | `radix-ui ^1.6.7`, `lucide-react ^1.33.0` | ✅ [FACT] |
-| `src/` 미사용, `app/`·`components/`·`lib/` 루트 배치 | 실제 구조 일치, `tsconfig` paths `@/* → ./*` | ✅ [FACT] |
-| `AGENTS.md`가 `node_modules/next/dist/docs/`를 가리킴 | `AGENTS.md` 존재, `node_modules/next/dist/docs/` 실재 | ✅ [FACT] |
-| **React Query (TanStack Query)** | **package.json에 없음** | ❌ [FACT] 미설치 |
-| **Framer Motion** | **package.json에 없음** | ❌ [FACT] 미설치 |
-| **Tiptap** | **package.json에 없음** | ❌ [FACT] 미설치 |
-| **React Hook Form + Zod** | **package.json에 없음** | ❌ [FACT] 미설치 |
+| PRD 1.3 주장                                                  | 실제 파일 값                                                                                             | 판정                                                        |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Spring Boot **4.1.0**                                         | `pom.xml` parent `4.1.0`                                                                                 | ✅ [FACT]                                                   |
+| JDK **21**                                                    | `<java.version>21</java.version>`                                                                        | ✅ [FACT]                                                   |
+| Maven / Lombok                                                | `mvnw` 존재, `lombok` optional + annotationProcessorPaths                                                | ✅ [FACT]                                                   |
+| jjwt **0.12.6** (api/impl/jackson)                            | 3개 모듈 모두 `0.12.6`                                                                                   | ✅ [FACT]                                                   |
+| 베이스 패키지 `com.example`                                   | `groupId=com.example`, `src/main/java/com/example/TodoBackendApplication.java`                           | ✅ [FACT]                                                   |
+| `spring-boot-starter-webmvc` 로 모듈 분리                     | pom에 `spring-boot-starter-webmvc` + `-webmvc-test`/`-security-test`/`-validation-test`/`-data-jpa-test` | ✅ [FACT] — Spring Boot 4.0 마이그레이션 가이드로 교차 확인 |
+| Next.js **16.3.1**                                            | `"next": "16.3.1"`, `eslint-config-next: 16.3.1`                                                         | ✅ [FACT]                                                   |
+| React **19.2.8**                                              | `react`/`react-dom` 모두 `19.2.8`                                                                        | ✅ [FACT]                                                   |
+| TypeScript 5 / Tailwind CSS 4                                 | `typescript ^5`, `tailwindcss ^4`, `@tailwindcss/postcss ^4`                                             | ✅ [FACT]                                                   |
+| Tailwind 4 CSS-first (`tailwind.config.js` 미사용)            | `components.json`의 `"tailwind.config": ""`, config 파일 부재                                            | ✅ [FACT]                                                   |
+| shadcn/ui **4.18.0**, style `radix-nova`, baseColor `neutral` | `"shadcn": "^4.18.0"`(= **CLI 버전**), `components.json` style `radix-nova` / baseColor `neutral`        | ⚠️ 부분 — Minor #14 참조                                    |
+| radix-ui, lucide-react **1.33.0**                             | `radix-ui ^1.6.7`, `lucide-react ^1.33.0`                                                                | ✅ [FACT]                                                   |
+| `src/` 미사용, `app/`·`components/`·`lib/` 루트 배치          | 실제 구조 일치, `tsconfig` paths `@/* → ./*`                                                             | ✅ [FACT]                                                   |
+| `AGENTS.md`가 `node_modules/next/dist/docs/`를 가리킴         | `AGENTS.md` 존재, `node_modules/next/dist/docs/` 실재                                                    | ✅ [FACT]                                                   |
+| **React Query (TanStack Query)**                              | **package.json에 없음**                                                                                  | ❌ [FACT] 미설치                                            |
+| **Framer Motion**                                             | **package.json에 없음**                                                                                  | ❌ [FACT] 미설치                                            |
+| **Tiptap**                                                    | **package.json에 없음**                                                                                  | ❌ [FACT] 미설치                                            |
+| **React Hook Form + Zod**                                     | **package.json에 없음**                                                                                  | ❌ [FACT] 미설치                                            |
 
 **추가 확인 [FACT]**
 
@@ -64,17 +64,17 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 
 ## ✅ 불변 규칙 준수 결과 (INVARIANTS)
 
-| 규칙 | 준수 | 근거 / 비고 |
-|------|------|------|
-| 이메일 전용 로그인 (username 없음) | ✅ | PRD 4.1 AUTH-01 "**ID는 이메일만**", 8.2 `users`에 username 컬럼 없음, API_SPEC 3.1/3.2 요청 바디에 email만 존재 |
-| 비밀번호 6자 규칙 (복잡도 추가 금지) | ✅ | PRD 4.1 "**최소 6자** (그 이상 복잡도 제약을 추가하지 않는다)", 6.2, API_SPEC `@Size(min = 6)`. 가이드(`forms-react-hook-form.md`)도 복잡도 정규식을 명시적으로 무시하도록 지시 |
-| JWT 24h / Refresh Token 미도입 | ✅ | PRD 4.1 AUTH-02, 10장, 12.1 `jwt.expiration=86400000`, 13.1 "Refresh Token 미구현", 4.5 범위 제외. API_SPEC `expiresIn: 86400000` 일치 |
-| Soft Delete (물리 삭제 금지) | ✅ | PRD 8.1/8.3, TODO-06, API_SPEC 4.7 "물리 삭제하지 않고 `deleted_at` 기록". 두 테이블 모두 `deleted_at` 보유 |
-| 페이지네이션 필수 | ✅ | PRD 4.4(규격 절 별도 존재), TODO-01, 7.2, API_SPEC 4.2. 전체 목록 반환 표현 없음 |
-| 소유권 검증 (본인 리소스만) | ✅ | PRD 7.2 서두, 10장(불일치 시 **404**), API_SPEC 4장/2.3, ROADMAP M4 DoD. **세 문서가 404 정책까지 완전 일치** |
-| 스키마 `TodoListDB` / BIGINT ID | ✅ (조건부) | PRD 8.1 스키마명 고정, 8.2 `id BIGINT PK AUTO`, 공통 필드 3종 존재. **다만 PostgreSQL 대소문자 폴딩 위험 → Major #1** |
-| 페이지네이션 재사용 컴포넌트 | ✅ | PRD 4.4/UI-02 `components/common/Pagination.tsx`, ROADMAP M5 DoD, guides/project-structure.md 일치 |
-| 민감정보 Git 커밋 금지 | ❌ | **PRD 12.1은 올바르게 명세했으나, 실제 `application.properties`에 평문 비밀번호가 커밋되어 있음 → Critical #1** |
+| 규칙                                 | 준수        | 근거 / 비고                                                                                                                                                                     |
+| ------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 이메일 전용 로그인 (username 없음)   | ✅          | PRD 4.1 AUTH-01 "**ID는 이메일만**", 8.2 `users`에 username 컬럼 없음, API_SPEC 3.1/3.2 요청 바디에 email만 존재                                                                |
+| 비밀번호 6자 규칙 (복잡도 추가 금지) | ✅          | PRD 4.1 "**최소 6자** (그 이상 복잡도 제약을 추가하지 않는다)", 6.2, API_SPEC `@Size(min = 6)`. 가이드(`forms-react-hook-form.md`)도 복잡도 정규식을 명시적으로 무시하도록 지시 |
+| JWT 24h / Refresh Token 미도입       | ✅          | PRD 4.1 AUTH-02, 10장, 12.1 `jwt.expiration=86400000`, 13.1 "Refresh Token 미구현", 4.5 범위 제외. API_SPEC `expiresIn: 86400000` 일치                                          |
+| Soft Delete (물리 삭제 금지)         | ✅          | PRD 8.1/8.3, TODO-06, API_SPEC 4.7 "물리 삭제하지 않고 `deleted_at` 기록". 두 테이블 모두 `deleted_at` 보유                                                                     |
+| 페이지네이션 필수                    | ✅          | PRD 4.4(규격 절 별도 존재), TODO-01, 7.2, API_SPEC 4.2. 전체 목록 반환 표현 없음                                                                                                |
+| 소유권 검증 (본인 리소스만)          | ✅          | PRD 7.2 서두, 10장(불일치 시 **404**), API_SPEC 4장/2.3, ROADMAP M4 DoD. **세 문서가 404 정책까지 완전 일치**                                                                   |
+| 스키마 `TodoListDB` / BIGINT ID      | ✅ (조건부) | PRD 8.1 스키마명 고정, 8.2 `id BIGINT PK AUTO`, 공통 필드 3종 존재. **다만 PostgreSQL 대소문자 폴딩 위험 → Major #1**                                                           |
+| 페이지네이션 재사용 컴포넌트         | ✅          | PRD 4.4/UI-02 `components/common/Pagination.tsx`, ROADMAP M5 DoD, guides/project-structure.md 일치                                                                              |
+| 민감정보 Git 커밋 금지               | ❌          | **PRD 12.1은 올바르게 명세했으나, 실제 `application.properties`에 평문 비밀번호가 커밋되어 있음 → Critical #1**                                                                 |
 
 > **결론**: PRD 문서 자체는 불변 규칙 7개를 **모두 준수**한다. 위반은 PRD가 아니라 **실제 코드가 PRD 12.1을 아직 이행하지 않은 것**이다. [INVARIANT]
 
@@ -84,20 +84,20 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 
 ### PRD ↔ API_SPEC — 엔드포인트 1:1 대응 (누락/고아 **없음**)
 
-| PRD 7장 | API_SPEC | 기능 ID | 판정 |
-|---|---|---|---|
-| `POST /api/auth/signup` | 3.1 (201, `COMMON_001`/`AUTH_002`) | AUTH-01 | ✅ |
-| `POST /api/auth/login` | 3.2 (200, `COMMON_001`/`AUTH_001`) | AUTH-02 | ✅ |
-| `GET /oauth2/authorization/{provider}` | 3.4 | AUTH-03 | ✅ |
-| `GET /login/oauth2/code/{provider}` | 3.5 (+ `?error=AUTH_007` 실패 경로) | AUTH-03 | ✅ |
-| `GET /api/auth/me` | 3.3 (`AUTH_003~005`/`AUTH_006`) | AUTH-04 | ✅ |
-| (AUTH-05 = API 없음) | 3.6 "API 없음" 명시 | AUTH-05 | ✅ 양쪽 모두 명시 |
-| `GET /api/todos` | 4.2 (쿼리 4종, `PageResponse`) | TODO-01 | ✅ |
-| `GET /api/todos/{id}` | 4.3 (`TODO_001`) | TODO-02 | ✅ |
-| `POST /api/todos` | 4.4 (201) | TODO-03 | ✅ |
-| `PUT /api/todos/{id}` | 4.5 | TODO-04 | ⚠️ 시맨틱 모순 → Major #3 |
-| `PATCH /api/todos/{id}/status` | 4.6 (바디 없음) | TODO-05 | ⚠️ 비멱등 → Major #2 |
-| `DELETE /api/todos/{id}` | 4.7 | TODO-06 | ✅ |
+| PRD 7장                                | API_SPEC                            | 기능 ID | 판정                      |
+| -------------------------------------- | ----------------------------------- | ------- | ------------------------- |
+| `POST /api/auth/signup`                | 3.1 (201, `COMMON_001`/`AUTH_002`)  | AUTH-01 | ✅                        |
+| `POST /api/auth/login`                 | 3.2 (200, `COMMON_001`/`AUTH_001`)  | AUTH-02 | ✅                        |
+| `GET /oauth2/authorization/{provider}` | 3.4                                 | AUTH-03 | ✅                        |
+| `GET /login/oauth2/code/{provider}`    | 3.5 (+ `?error=AUTH_007` 실패 경로) | AUTH-03 | ✅                        |
+| `GET /api/auth/me`                     | 3.3 (`AUTH_003~005`/`AUTH_006`)     | AUTH-04 | ✅                        |
+| (AUTH-05 = API 없음)                   | 3.6 "API 없음" 명시                 | AUTH-05 | ✅ 양쪽 모두 명시         |
+| `GET /api/todos`                       | 4.2 (쿼리 4종, `PageResponse`)      | TODO-01 | ✅                        |
+| `GET /api/todos/{id}`                  | 4.3 (`TODO_001`)                    | TODO-02 | ✅                        |
+| `POST /api/todos`                      | 4.4 (201)                           | TODO-03 | ✅                        |
+| `PUT /api/todos/{id}`                  | 4.5                                 | TODO-04 | ⚠️ 시맨틱 모순 → Major #3 |
+| `PATCH /api/todos/{id}/status`         | 4.6 (바디 없음)                     | TODO-05 | ⚠️ 비멱등 → Major #2      |
+| `DELETE /api/todos/{id}`               | 4.7                                 | TODO-06 | ✅                        |
 
 세부 값도 일치한다: 기본 size 10 / 최대 100 절삭, 정렬 `created_at DESC` 고정, `keyword`는 `title` 한정, 소유권 위반 404, `ApiResponse`/`PageResponse` 필드 구성(6필드), `expiresIn` 86400000. **[FACT] 대조 완료.**
 
@@ -109,17 +109,17 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 
 ### PRD ↔ ROADMAP — 기능 ID 마일스톤 매핑
 
-| 기능 ID | 매핑 마일스톤 | 판정 |
-|---|---|---|
-| AUTH-01, AUTH-02, AUTH-04 (BE) | M2 (작업·DoD 모두 명시) | ✅ |
-| AUTH-03 (BE) | M3 | ✅ |
-| AUTH-01/02/03 (FE 화면) | M6 | ✅ |
-| **AUTH-04 (헤더 표시), AUTH-05 (로그아웃)** | **없음** | ❌ 고아 — Major #9 |
-| TODO-01~06 (BE) | M4 | ✅ |
-| TODO-01~06 (FE) | M7 | ✅ |
-| UI-01 다크모드 | M5 | ✅ |
-| UI-02 Pagination | M5 (DoD에 단독 렌더/콜백까지) | ✅ |
-| **공통 헤더(PRD 6.7) 구현** | **어느 마일스톤 작업/DoD에도 없음** | ❌ 고아 — Major #9 |
+| 기능 ID                                     | 매핑 마일스톤                       | 판정               |
+| ------------------------------------------- | ----------------------------------- | ------------------ |
+| AUTH-01, AUTH-02, AUTH-04 (BE)              | M2 (작업·DoD 모두 명시)             | ✅                 |
+| AUTH-03 (BE)                                | M3                                  | ✅                 |
+| AUTH-01/02/03 (FE 화면)                     | M6                                  | ✅                 |
+| **AUTH-04 (헤더 표시), AUTH-05 (로그아웃)** | **없음**                            | ❌ 고아 — Major #9 |
+| TODO-01~06 (BE)                             | M4                                  | ✅                 |
+| TODO-01~06 (FE)                             | M7                                  | ✅                 |
+| UI-01 다크모드                              | M5                                  | ✅                 |
+| UI-02 Pagination                            | M5 (DoD에 단독 렌더/콜백까지)       | ✅                 |
+| **공통 헤더(PRD 6.7) 구현**                 | **어느 마일스톤 작업/DoD에도 없음** | ❌ 고아 — Major #9 |
 
 의존 순서 위반은 없다. `M2 → M3/M4`, `M0 → M5`, `M2+M5 → M6`, `M4+M5 → M7`, `M3~M7 → M8 → M9`는 PRD의 데이터 의존성과 정확히 일치한다 [INFERENCE]. 병렬 가능 표기(M3∥M4, M5∥BE)도 타당하다.
 
@@ -137,13 +137,13 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 
 ### 하위 가이드 정합성 (`docs/guides/`)
 
-| 문서 | 상태 |
-|---|---|
-| `project-structure.md` | ✅ PRD 2.2와 완전 일치(`src/` 미사용, 경로/컴포넌트 구성, `providers/` 위치까지) |
-| `forms-react-hook-form.md` | ✅ 모범적 — 비밀번호 6자 규칙과 "Server Actions 금지, Spring Boot REST 호출" 치환 지침을 서두에 명시 |
-| `nextjs-16.md` | ⚠️ "현재 설치 버전: **16.3.0**" — 실제/PRD는 **16.3.1** |
-| `styling-guide.md` | ⚠️ shadcn/ui **new-york** style·`next-themes`·`prettier-plugin-tailwindcss` 전제 — 실제 `components.json`은 **radix-nova**이고 세 패키지 모두 미설치 |
-| `component-patterns.md` | ⚠️ "**Next.js 15.5.3** + React 19" 전제 — 스택과 불일치 |
+| 문서                       | 상태                                                                                                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `project-structure.md`     | ✅ PRD 2.2와 완전 일치(`src/` 미사용, 경로/컴포넌트 구성, `providers/` 위치까지)                                                                     |
+| `forms-react-hook-form.md` | ✅ 모범적 — 비밀번호 6자 규칙과 "Server Actions 금지, Spring Boot REST 호출" 치환 지침을 서두에 명시                                                 |
+| `nextjs-16.md`             | ⚠️ "현재 설치 버전: **16.3.0**" — 실제/PRD는 **16.3.1**                                                                                              |
+| `styling-guide.md`         | ⚠️ shadcn/ui **new-york** style·`next-themes`·`prettier-plugin-tailwindcss` 전제 — 실제 `components.json`은 **radix-nova**이고 세 패키지 모두 미설치 |
+| `component-patterns.md`    | ⚠️ "**Next.js 15.5.3** + React 19" 전제 — 스택과 불일치                                                                                              |
 
 ### 내부 정합성 (기능 ↔ 메뉴 ↔ 페이지 ↔ API)
 
@@ -229,13 +229,13 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 
 ## Step 8. 복잡도 및 위험도 평가
 
-| 영역 | 난이도 | 근거 |
-|---|---|---|
-| 백엔드 구현 | **3/5** | CRUD·JWT는 정형이나, Boot 4/Security 7/Jackson 3/Hibernate 7 조합의 신규 함정(JSON FormatMapper, 스타터 분리, 람다 DSL, CSRF 기본값)이 겹친다 |
-| 프론트엔드 구현 | **3/5** | 화면 수는 적으나 Tiptap·React Query·Framer Motion이 아직 미설치이고 Next 16 async API/Suspense 규칙 적응이 필요 |
-| FE-BE 통합·인증 | **4/5** | OAuth2 리다이렉트 + 무상태 JWT + 콜백 토큰 전달 + 401 리다이렉트 루프 방지가 가장 까다롭다 |
-| 배포(AWS) | **3/5** | Amplify/EC2/RDS는 정형. 운영 도메인 기준 CORS·OAuth2 Redirect URI 갱신(M9 DoD에 이미 존재)이 실패 지점 |
-| 외부 의존 위험 | **7/10** | Kakao 콘솔 정책(이메일 동의 항목·client secret 사용 여부) + 최신 메이저 4종의 미성숙 지점 |
+| 영역            | 난이도   | 근거                                                                                                                                          |
+| --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 백엔드 구현     | **3/5**  | CRUD·JWT는 정형이나, Boot 4/Security 7/Jackson 3/Hibernate 7 조합의 신규 함정(JSON FormatMapper, 스타터 분리, 람다 DSL, CSRF 기본값)이 겹친다 |
+| 프론트엔드 구현 | **3/5**  | 화면 수는 적으나 Tiptap·React Query·Framer Motion이 아직 미설치이고 Next 16 async API/Suspense 규칙 적응이 필요                               |
+| FE-BE 통합·인증 | **4/5**  | OAuth2 리다이렉트 + 무상태 JWT + 콜백 토큰 전달 + 401 리다이렉트 루프 방지가 가장 까다롭다                                                    |
+| 배포(AWS)       | **3/5**  | Amplify/EC2/RDS는 정형. 운영 도메인 기준 CORS·OAuth2 Redirect URI 갱신(M9 DoD에 이미 존재)이 실패 지점                                        |
+| 외부 의존 위험  | **7/10** | Kakao 콘솔 정책(이메일 동의 항목·client secret 사용 여부) + 최신 메이저 4종의 미성숙 지점                                                     |
 
 **일정 영향 추정** — ROADMAP 총 12일 추정 대비, Critical #2(JSONB FormatMapper)와 Major #6(OAuth2 세션)에서 각각 **0.5일 내외의 추가 소요**가 예상된다(M1·M3).
 
@@ -264,6 +264,7 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 **영향도**: CLAUDE.md 규칙 9와 PRD 10장·12.1을 정면으로 위반한다. 지금 상태로 M9까지 진행하면 RDS 접속정보가 그대로 커밋되는 경로가 열린다.
 
 **해결 방안** [ALTERNATIVE]:
+
 1. PRD 12.1대로 `${DB_URL}/${DB_USERNAME}/${DB_PASSWORD}` 플레이스홀더로 즉시 치환하고 로컬 값은 IDE 실행 구성/시스템 환경변수로 주입.
 2. 또는 `application-dev.properties`를 `.gitignore`에 넣고 `application-dev.properties.example`만 커밋.
 3. `ddl-auto`를 공통 파일에서 제거하고 프로파일별 파일로 이동(dev=update / prod=validate).
@@ -272,7 +273,7 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 **긴급도**: 최상. M1 착수 전.
 
 > ✅ **해소됨 (Task 035 실측 확인)** — `application.properties`는 `spring.datasource.password=${DB_PASSWORD}` 플레이스홀더만 사용하며 평문 값이 없다. `application-dev.properties`/`application-prod.properties`도 별도로 존재한다.
-</reasoning>
+> </reasoning>
 
 ### Issue #2 — `content` JSONB의 JPA 매핑 방식 미명시 + Jackson 3/Hibernate 7 FormatMapper 부재
 
@@ -280,6 +281,7 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 **발견 과정**: PRD 8.2/13.1이 `content`를 JSONB로 확정했으나 8.3(Soft Delete 방침)에는 매핑 지침이 없고, 2.1 구조와 pom.xml에도 JSON 매핑 관련 요소가 없어 공식 문서를 확인했다.
 
 **문제 분석**:
+
 - [FACT] Hibernate 6/7은 `@JdbcTypeCode(SqlTypes.JSON)`로 JSONB를 네이티브 매핑하며 별도 라이브러리가 필요 없다.
 - [FACT] Spring Boot 4는 **Jackson 3(`tools.jackson`)**이 기본이다.
 - [FACT] Jackson 3의 패키지 개명 때문에 **Hibernate 7의 JSON FormatMapper 자동 구성이 깨진다**는 사례가 Hibernate 공식 포럼에 보고되어 있다(`Could not find a FormatMapper for the JSON format`, Hibernate 7.1.1.Final + Jackson 3.0.0-rc9 + Spring Boot 4.0.0+). 이 프로젝트는 **Spring Boot 4.1.0**이다.
@@ -288,6 +290,7 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 **영향도**: `Todo.content` 매핑이 실패하면 M1(엔티티) 단계에서 애플리케이션이 기동하지 못하거나 TODO-03/04가 전부 막힌다. PRD의 핵심 차별점(Tiptap 리치 본문)이 걸려 있다.
 
 **해결 방안** [ALTERNATIVE]:
+
 1. **가장 단순**: `Todo.content`를 `String`(Tiptap JSON 문자열)으로 두고 컬럼만 `jsonb`로 유지 — `@JdbcTypeCode(SqlTypes.JSON)` + `String` 조합이 FormatMapper 의존을 줄이는지 실측.
 2. **정공법**: `AbstractJsonFormatMapper`를 `tools.jackson` 기준으로 구현하고 `spring.jpa.properties.hibernate.type.json_format_mapper=<FQCN>`으로 등록(포럼 권장 워크어라운드).
 3. **회피**: Jackson 2를 클래스패스에 병행 추가.
@@ -298,7 +301,7 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 **긴급도**: 최상. M1 엔티티 설계 전.
 
 > ✅ **해소됨 (Task 035 실측 확인)** — `Todo.java`가 `@JdbcTypeCode(SqlTypes.JSON)`(1안)으로 매핑되어 있고, `application.properties`의 `json_format_mapper` 설정은 주석 처리된 채로도 정상 동작해 정공법(2안) 없이 해소되었다. `TodoController`/`TodoService`가 `content` 필드를 포함해 완성되어 있어 애플리케이션 기동·CRUD 전 과정이 동작함을 코드로 확인했다.
-</reasoning>
+> </reasoning>
 
 ### Issue #3 — OAuth2 JWT를 쿼리스트링으로 전달 (PRD 6.3 / 7.1, API_SPEC 3.5)
 
@@ -310,6 +313,7 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 **영향도**: 소셜 로그인 경로 전체(AUTH-03). 기능은 동작하므로 **기능 결함이 아니라 보안 결함**이다.
 
 **해결 방안** [ALTERNATIVE] — 변경 비용이 낮은 순:
+
 1. **URL 프래그먼트**: `/oauth2/callback#token=...` — 프래그먼트는 서버로 전송되지 않아 Referer/서버 로그 노출이 사라진다. FE는 `window.location.hash`로 읽고 즉시 `history.replaceState`로 제거. **PRD 대비 변경 최소**.
 2. **일회용 교환 코드**: 콜백에 짧은 TTL(예: 30초) 1회용 코드를 실어 보내고 FE가 `POST /api/auth/oauth2/exchange`로 JWT 교환. 가장 안전하나 엔드포인트 1개 추가(API_SPEC·ROADMAP M3 갱신 필요).
 3. **HttpOnly Secure 쿠키**: 백엔드가 콜백 응답에 쿠키 설정. 단 PRD 10장의 `Authorization: Bearer` 전제 및 크로스도메인(Amplify↔EC2) `SameSite=None` 요건과 충돌하므로 이 프로젝트에는 부적합.
@@ -320,7 +324,7 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 **긴급도**: 상. M3 착수 전.
 
 > ✅ **해소됨 (Task 035 실측 확인)** — `OAuth2SuccessHandler.java:49`가 `frontendUrl + "/oauth2/callback#token=" + URLEncoder.encode(...)`로 **URL 프래그먼트(1안)**를 사용한다. 테스트(`OAuth2SuccessHandlerTest.java:57`)도 `#token=`으로 시작함을 검증한다.
-</reasoning>
+> </reasoning>
 
 ### Issue #4 — PRD 1.3의 "실제 프로젝트에 설치된 값" 주장이 5개 항목에서 사실이 아님
 
@@ -338,7 +342,7 @@ PRD 1.3은 **"아래 버전은 실제 프로젝트에 설치된 값이다"**라�
 **긴급도**: 상. 구현 착수 전(문서 신뢰성 문제이며 수정 비용은 낮다).
 
 > ✅ **해소됨 (Task 035 실측 확인)** — `package.json`에 React Query(`@tanstack/react-query` 5.102.0), Framer Motion 후신(`motion` 13.1.1), Tiptap(`@tiptap/react`·`@tiptap/starter-kit` 3.30.2), React Hook Form(7.86.0), Zod(4.4.3)가 전부 설치되어 있음을 확인했다. PRD 1.3 표도 Task 035에서 해당 행을 ✅로 갱신했다. `docs/guides/forms-react-hook-form.md`의 "아직 설치되어 있지 않음" 문구도 Task 035에서 정정했다.
-</reasoning>
+> </reasoning>
 
 ---
 
@@ -389,11 +393,13 @@ API_SPEC 1.1은 "`data`: 실패 시 `null`", 1.3은 실패 응답 `data`에 **�
 ### Major #7 — `users.provider` 단일 컬럼 모델이 "기존 이메일 계정 연동"(AUTH-03)을 표현하지 못함
 
 PRD 4.1 AUTH-03과 API_SPEC 3.5는 "기존 이메일 → 해당 계정에 연동"을 요구하지만, 8.2의 `users`는 `provider`(NOT NULL)·`provider_id`를 **각 1개**만 갖는다. LOCAL 계정에 Google을 연동하면 `provider`를 덮어써야 하고, 그러면 다음 질문에 답이 없다.
+
 - 덮어쓴 뒤 기존 **비밀번호 로그인은 계속 허용**되는가? (`password`는 남아 있음)
 - 같은 이메일로 Google과 Kakao를 **둘 다** 연동하면?
 - `GET /api/auth/me`의 `provider`는 무엇을 반환하는가?
 
 **권고** [ALTERNATIVE]:
+
 1. **MVP 최소 변경**: PRD 13.1 확정 사항에 "연동 시 `provider`는 **최초 가입 수단을 유지**하고, 소셜 재로그인은 이메일 매칭으로 허용. 로컬 비밀번호가 있으면 비밀번호 로그인도 계속 유효" 같은 **정책 한 줄**을 확정.
 2. **정석**: `user_auth_providers` 연결 테이블 분리(MVP 범위 초과 — 4.5로 이관 권장).
 
