@@ -1030,67 +1030,67 @@ PRD 6.7의 공통 헤더. 세 기능이 여기서만 구현되므로 별도 Task
 
 ---
 
-## M9. AWS 배포 🚀
+## M9. AWS 배포 🚀 ✅ 실측 완료(2026-09-10) — RDS 백업 정책·운영 로그 감사 2건만 미확인
 
 **목표**: PRD의 배포 아키텍처로 운영 환경에 배포한다.
 
-### Task 036: RDS(PostgreSQL) 프로비저닝 및 운영 스키마 준비 ⏳ 실행 대기
+> RDS·EC2·Amplify·CloudFront 전부 사용자가 AWS 콘솔에서 직접 프로비저닝했다. 이 세션에서 Google OAuth2 `redirect_uri_mismatch`(CloudFront가 `X-Forwarded-Proto` 미전달)와 S3 업로드 403(EC2 `todolist.env`의 `AWS_SECRET_ACCESS_KEY` 오기입)이라는 두 가지 실제 장애를 원인 특정해 해결했고, 회원가입→로그인→이미지 첨부 Todo까지 전 구간을 실측으로 재현·검증했다. 남은 미확인 2건(Task 036 백업 정책, Task 039 로그 감사)은 EC2/RDS 콘솔·로그를 직접 열람해야 하는 사용자 전용 작업이다.
+
+### Task 036: RDS(PostgreSQL) 프로비저닝 및 운영 스키마 준비 ✅ 기능 검증 완료(2026-09-10) — 백업 정책만 미확인
 
 **영역**: 인프라 | **선행**: M8
 
-> ⚠️ AWS 콘솔/CLI 조작은 Claude Code가 이 환경에서 대신 실행할 수 없다(AWS CLI·`~/.aws` 자격증명 모두 없음, 실측 2026-09-01). 아래 체크리스트·SQL·백업 정책을 [docs/guides/aws-deployment.md](./guides/aws-deployment.md)에 정리해뒀다 — **사용자가 직접 AWS에서 수행한 뒤 결과를 알려주면 이 Task를 실측 완료로 갱신한다.**
+> ⚠️ AWS 콘솔/CLI 조작은 Claude Code가 이 환경에서 대신 실행할 수 없다(AWS CLI·`~/.aws` 자격증명 모두 없음, 실측 2026-09-01) — 아래 항목은 사용자가 AWS 콘솔에서 직접 수행했고, Claude는 **그 결과를 애플리케이션 동작으로 간접 검증**했다(RDS 콘솔 화면 자체를 본 것은 아니다).
 
-- [ ] RDS PostgreSQL 인스턴스 생성, 보안그룹(EC2에서만 접근) — 가이드 1절
-- [ ] **따옴표 없이** `CREATE SCHEMA IF NOT EXISTS TodoListDB;` → `\dn`으로 `todolistdb` 확인 (PRD 8.1) — 가이드 2절
-- [ ] ⚠️ **`prod` 프로파일은 `ddl-auto=validate`** 다. 스키마·테이블이 미리 존재하지 않으면 기동에 실패한다
-  - 초기 1회는 `dev` 설정으로 스키마를 생성하거나, M1에서 생성된 DDL을 SQL로 추출해 적용한다 — 가이드 3절(방법 A/B)
-- [ ] 백업/스냅샷 정책 확인 — 가이드 4절
+- [x] RDS PostgreSQL 인스턴스 생성, 보안그룹(EC2에서만 접근) — 간접 검증: `DB_URL`이 RDS 엔드포인트를 가리킨 상태로 `prod` 프로파일이 기동해 DB 커넥션을 맺었고(2026-09-10, `systemctl status`로 `active (running)` 확인), 이후 실제 CRUD·로그인이 정상 동작해 연결 자체는 확실하다. 보안그룹 규칙(EC2에서만 접근하도록 제한됐는지)은 콘솔로 직접 보지 않아 **미확인**
+- [x] **따옴표 없이** `CREATE SCHEMA IF NOT EXISTS TodoListDB;` → `\dn`으로 `todolistdb` 확인 (PRD 8.1) — 간접 검증: `ddl-auto=validate`인 `prod`에서 기동이 성공했다는 것 자체가 스키마·테이블이 엔티티와 정확히 일치한 상태로 미리 존재했다는 증거다(불일치 시 기동 자체가 실패한다)
+- [x] ⚠️ **`prod` 프로파일은 `ddl-auto=validate`** 다 — 위와 동일 증거로 확인됨
+- [ ] 백업/스냅샷 정책 확인 — 가이드 4절, **미확인** (사용자가 RDS 콘솔에서 자동 백업 설정을 직접 확인 필요)
 
-### Task 037: 백엔드 EC2 배포 및 환경변수 주입 ⏳ 실행 대기
+### Task 037: 백엔드 EC2 배포 및 환경변수 주입 ✅ 실측 완료(2026-09-10)
 
 **영역**: 인프라 | **선행**: Task 036
 
-> ⚠️ Task 036과 같은 이유로 EC2 프로비저닝·SSH 배포는 Claude Code가 이 환경에서 대신 실행할 수 없다. [docs/guides/aws-deployment.md](./guides/aws-deployment.md)의 "Task 037" 절에 인스턴스 설정값·빌드/전송 명령·systemd 서비스 유닛·환경변수 주입 방법을 정리해뒀다 — **사용자가 직접 수행한 뒤 결과를 알려주면 실측 완료로 갱신한다.**
+> ⚠️ Task 036과 같은 이유로 EC2 프로비저닝·SSH 배포 자체는 Claude Code가 대신 실행할 수 없었다 — 사용자가 WinSCP/PuTTY로 직접 수행했다. 이 세션에서는 `todolist.service` 재시작·`journalctl` 로그·`todolist.env` 값 교정까지 Claude가 사용자와 함께 직접 조작하며 실측했다.
 
-- [ ] EC2 인스턴스(JDK 21) 준비, `./mvnw clean package` 산출물 배포 — 가이드 1~2절
-- [ ] `--spring.profiles.active=prod` 로 기동 — 가이드 4절
-- [ ] **시스템 환경변수 주입** — `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `OAUTH_GOOGLE_*`, `OAUTH_KAKAO_*`, `APP_FRONTEND_URL` (PRD 12.1) — 가이드 3절
-  - ⚠️ `prod`는 기본값을 두지 않는다. 환경변수가 없으면 **기동에 실패**하도록 설계되어 있다 (의도된 동작)
-  - **어떤 값도 Git에 커밋하지 않는다** (불변 규칙 9)
-- [ ] 보안그룹/포트, 프로세스 관리(systemd 등), 로그 확인 — 가이드 1·4·5절
+- [x] EC2 인스턴스(JDK 21) 준비, `./mvnw clean package` 산출물 배포 — `redeploy.sh` 방식(WinSCP로 jar 전송 후 스왑+재시작)으로 배포 중임을 확인, 실제 최신 jar로 기동 성공(2026-09-10)
+- [x] `--spring.profiles.active=prod` 로 기동 — `todolist.service` 유닛에 명시되어 있고, `systemctl status`로 `active (running)` 확인(2026-09-10)
+- [x] **시스템 환경변수 주입** — `EnvironmentFile=/etc/todolist/todolist.env`로 주입 확인. 이 세션에서 `APP_FRONTEND_URL`·`SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI`·`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`를 직접 `sed`로 교정하고 재시작해 정상 반영됨을 확인(2026-09-10)
+  - `OAUTH_KAKAO_*`는 `application.properties`에서 여전히 주석 처리(비활성)이므로 주입 대상 아님(§1 참조)
+- [x] 보안그룹/포트, 프로세스 관리(systemd 등), 로그 확인 — CloudFront를 거쳐 외부에서 API가 정상 응답(로그인·이미지 업로드 전 구간 성공)해 네트워킹은 기능적으로 검증됨. `journalctl -u todolist`로 기동 로그도 확인. 보안그룹 규칙 자체를 콘솔로 본 것은 아니라서 **세부 규칙 내용은 미확인**
 
-### Task 038: 프론트엔드 Amplify 배포 ⏳ 실행 대기
+### Task 038: 프론트엔드 Amplify 배포 ✅ 실측 완료(2026-09-10) — 커스텀 도메인은 미사용
 
 **영역**: 인프라 | **선행**: Task 037
 
-> ⚠️ Task 036·037과 같은 이유로 Amplify 콘솔 연결·도메인 설정은 Claude Code가 이 환경에서 대신 실행할 수 없다. [docs/guides/aws-deployment.md](./guides/aws-deployment.md)의 "Task 038" 절에 GitHub 연결·빌드 설정(SSR 인식)·환경변수·HTTPS/커스텀 도메인 절차를 정리해뒀다 — **사용자가 직접 수행한 뒤 결과를 알려주면 실측 완료로 갱신한다.**
+> ⚠️ Task 036·037과 같은 이유로 Amplify 콘솔 연결 자체는 Claude Code가 대신 실행할 수 없었다 — 사용자가 직접 연결했다. 이 세션에서 Amplify 콘솔 캡처(사용자 제공)로 환경변수 설정을 함께 확인하고, 재배포 후 실제 동작으로 검증했다.
 
-- [ ] AWS Amplify 연결(저장소 `main` 브랜치), 빌드 설정 — 가이드 1절
-- [ ] 환경변수 `NEXT_PUBLIC_API_BASE_URL` = 운영 백엔드 주소 — 가이드 2절
-- [ ] HTTPS 인증서 및 커스텀 도메인 확인 — 가이드 3절
+- [x] AWS Amplify 연결(저장소 `main` 브랜치), 빌드 설정 — `https://main.dt6mvvn7qu6cd.amplifyapp.com` 도메인으로 빌드·배포 확인됨(사용자 캡처 확인)
+- [x] 환경변수 `NEXT_PUBLIC_API_BASE_URL` = 운영 백엔드 주소 — 최초 미설정으로 `/undefined/oauth2/authorization/google` 404가 발생했던 것을 Amplify 콘솔에서 CloudFront 도메인(`https://dhn871ibp4gvr.cloudfront.net`)으로 설정 후 재배포해 해결 확인(2026-09-10). `NEXT_PUBLIC_*`은 빌드 타임에 인라인되므로 재배포가 필수였다
+- [x] HTTPS 인증서 확인 — `amplifyapp.com` 기본 도메인은 자동으로 HTTPS 제공, 실제 `https://` 접속 확인. **커스텀 도메인은 연결하지 않은 상태**(기본 Amplify 서브도메인 그대로 사용 중)
 
 > 📌 **Amplify 배포 자체에는 S3가 필요 없다** — Next.js 정적 자산은 Amplify가 자체 처리한다. ~~S3는 MVP에서 사용하지 않는다~~ 는 M10에서 뒤집혔다(PRD 4.5/4.6/13.1) — 첨부파일 이미지는 로컬 디스크로 먼저 구현됐고(M10), S3 전환은 이 Task(EC2/Amplify 배포)와 별개로 `S3StorageService` 구현이 별도 필요하다(가이드 §9, M10 Task 040 DoD 참조).
 
-### Task 039: 운영 도메인 기준 CORS·OAuth2 Redirect URI 갱신 및 보안 점검 ⚠️ 코드 검증 완료, 실행 대기
+### Task 039: 운영 도메인 기준 CORS·OAuth2 Redirect URI 갱신 및 보안 점검 ✅ 실측 완료(2026-09-10) — 로그 감사 1건만 미확인
 
 **영역**: 인프라 | **선행**: Task 038
 
-**배포에서 가장 자주 실패하는 지점이다.** M2에서 만든 CORS와 M3의 Redirect URI가 모두 로컬 주소로 고정되어 있다 — **였으나, 실측 결과 CORS는 이미 하드코딩이 아니었다** (아래 참조). [docs/guides/aws-deployment.md](./guides/aws-deployment.md)의 "Task 039" 절에 나머지 콘솔 작업(Google/Kakao Redirect URI, HTTPS 종단, 최종 점검)을 정리해뒀다 — **사용자가 직접 수행한 뒤 결과를 알려주면 실측 완료로 갱신한다.**
+**배포에서 가장 자주 실패하는 지점이었다** — 실제로 CloudFront가 origin에 `X-Forwarded-Proto`를 보내지 않아 `redirect_uri_mismatch`가 발생했고(아래 참조), S3 CORS 미설정으로 업로드가 막혔었다. 둘 다 이 세션에서 원인을 특정해 해결하고 실측으로 재확인했다.
 
-- [x] **`CorsConfig`의 허용 오리진을 운영 프론트 도메인으로 갱신** — 코드 재확인 결과 `CorsConfig.java`가 이미 `@Value("${app.frontend-url}")`로 `APP_FRONTEND_URL` 환경변수를 그대로 읽고 있어 하드코딩이 아니었다(코드 수정 불필요, 환경변수 값만 채우면 됨)
-- [ ] **Google/Kakao 개발자 콘솔의 Redirect URI를 운영 백엔드 주소로 추가**: `https://{운영BE}/login/oauth2/code/{provider}` — 가이드 참조, 사용자 실행 필요
-- [ ] `APP_FRONTEND_URL`이 운영 프론트 도메인인지 확인 — 가이드 참조, 사용자 실행 필요
-- [ ] **HTTPS 전 구간 확인** — 가이드 참조, 사용자 실행 필요(Task 037 가이드는 8080 평문까지만 다룸 — ALB/nginx 등 HTTPS 종단 별도 필요)
-- [x] 쿠키 기반 인가 요청 저장소의 `Secure` 속성 확인 — `CookieOAuth2AuthorizationRequestRepository.java`에 `.secure(true)`로 이미 반영되어 있음(Task 015)을 코드로 재확인
-- [x] 최종 보안 점검(1/2) — **저장소에 시크릿 없음**: 재점검 중 `todo-backend/application.properties`가 `.gitignore`로 인해 **한 번도 커밋된 적이 없었던 진짜 버그**를 발견해 고쳤다. 내용은 전부 `${ENV_VAR}` 플레이스홀더뿐이라 시크릿 노출은 아니었지만, 파일이 없으면 새 클론에서 Spring이 설정을 못 읽어 기동 자체가 안 되는 문제였다(README·PRD 12.1은 이 파일의 존재를 전제로 쓰여 있었음). `.gitignore` 규칙을 지우고 파일을 커밋해 해결
-- [ ] 최종 보안 점검(2/2) — 운영 로그에 토큰·비밀번호 미노출 — 가이드 참조, 사용자 실행 필요(운영 배포 후에만 확인 가능)
+- [x] **`CorsConfig`의 허용 오리진을 운영 프론트 도메인으로 갱신** — `CorsConfig.java`가 `@Value("${app.frontend-url}")`로 `APP_FRONTEND_URL`을 읽으므로 코드 수정 없이 환경변수만 Amplify 도메인으로 채워 해결(2026-09-10)
+- [x] **Google 개발자 콘솔의 Redirect URI를 운영 주소로 추가** — `https://{CloudFront 도메인}/login/oauth2/code/google`로 등록 완료(사용자 확인). `curl`로 인가 요청의 302 `Location` 헤더가 `redirect_uri=https://...`로 정확히 뜨는 것을 확인(2026-09-10). Kakao는 §1대로 비활성 상태라 해당 없음
+- [x] `APP_FRONTEND_URL`이 운영 프론트 도메인인지 확인 — `https://main.dt6mvvn7qu6cd.amplifyapp.com`로 설정·재시작 확인
+- [x] **HTTPS 전 구간 확인** — 프론트(Amplify 기본 도메인)·백엔드 앞단(CloudFront) 모두 `https://`로 서빙됨을 실제 접속으로 확인. EC2 origin 자체는 CloudFront가 흡수하므로 별도 종단 인증서 작업 불필요했다
+- [x] 쿠키 기반 인가 요청 저장소의 `Secure` 속성 확인 — `CookieOAuth2AuthorizationRequestRepository.java`에 `.secure(true)`로 이미 반영(Task 015)
+- [x] 최종 보안 점검(1/2) — 저장소에 시크릿 없음(기존 확인 유지)
+- [ ] 최종 보안 점검(2/2) — 운영 로그에 토큰·비밀번호 미노출 — **미확인**. EC2 `journalctl` 로그 전체를 Claude가 직접 열람하지 않았다 — 사용자가 `sudo journalctl -u todolist --no-pager | grep -iE "token|password"`로 직접 확인 권장(결과가 없어야 정상)
 
 **DoD**
-- [ ] 프론트/백엔드/DB가 운영 환경에서 연동 동작 — 실행 대기
-- [ ] **운영 도메인에서 브라우저 CORS 오류 없음** — 실행 대기 (코드는 준비됨)
-- [ ] 소셜 로그인 리다이렉트가 운영 도메인에서 정상 동작 — 실행 대기
-- [ ] HTTPS 및 환경변수 보안 점검 완료 — 실행 대기
-- [ ] 운영 환경에서 핵심 플로우(가입→로그인→Todo CRUD) 수동 확인 — 실행 대기
+- [x] 프론트/백엔드/DB가 운영 환경에서 연동 동작 — 임시 테스트 계정으로 회원가입→로그인→이미지 첨부 Todo 생성→조회까지 전 구간 실측 성공(2026-09-10), 사용자도 별도로 실제 52.5KB 이미지 업로드(`todos` id 24) 성공 확인
+- [x] **운영 도메인에서 브라우저 CORS 오류 없음** — S3 CORS에 Amplify 오리진 추가 후 프리플라이트 200 확인, 실제 업로드도 CORS 오류 없이 성공
+- [x] 소셜 로그인 리다이렉트가 운영 도메인에서 정상 동작 — `redirect_uri_mismatch` 해결 후 정상 리다이렉트 확인(curl + 사용자 브라우저)
+- [ ] HTTPS 및 환경변수 보안 점검 완료 — HTTPS·CORS·쿠키·저장소 시크릿은 확인됨, **로그 감사(위 항목) 1건만 남음**
+- [x] 운영 환경에서 핵심 플로우(가입→로그인→Todo CRUD) 수동 확인 — 위 DoD 1번째 항목과 동일 근거로 확인
 
 **의존성**: M8
 
